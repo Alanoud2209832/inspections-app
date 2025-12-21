@@ -1,95 +1,55 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
-# إعدادات واجهة الموقع
-st.set_page_config(page_title="نظام تنظيم الحملات الرقابية", layout="wide", initial_sidebar_state="expanded")
+# إعدادات الصفحة
+st.set_page_config(page_title="نظام الرقابة الذكي", layout="wide")
 
-# تحسين مظهر الواجهة بالعربية
-st.markdown("""
-    <style>
-    .main { text-align: right; direction: rtl; }
-    div[data-testid="stSidebarNav"] { text-align: right; direction: rtl; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- روابط Google Sheets ---
+# انسخي الروابط الكاملة من المتصفح وضعيها هنا
+URL_OBSERVERS = "https://docs.google.com/spreadsheets/d/1k-bUZ2OMPEUihzsP2g18GJFpbh7ja3Qc/edit?usp=sharing&ouid=109392900872958236563&rtpof=true&sd=true"
+URL_CAMPAIGNS = "https://docs.google.com/spreadsheets/d/1l0G8LReiliMcdl6Dpeyg2NTsVK6sG711/edit?usp=sharing&ouid=109392900872958236563&rtpof=true&sd=true"
 
-# دالة تحميل البيانات
-@st.cache_data
+def get_csv_url(url):
+    """دالة لتحويل رابط جوجل شيت العادي إلى رابط تحميل مباشر CSV"""
+    if "edit" in url:
+        return url.replace('/edit', '/export?format=csv') + "&gid=" + url.split('gid=')[-1]
+    return url
+
+@st.cache_data(ttl=60) # تحديث البيانات كل 60 ثانية إذا تغيرت في جوجل شيت
 def load_data():
     try:
-        obs = pd.read_excel("observers.xlsx")
-        camps = pd.read_excel("campaigns.xlsx")
-        return obs, camps
+        obs_df = pd.read_csv(get_csv_url(URL_OBSERVERS))
+        camp_df = pd.read_csv(get_csv_url(URL_CAMPAIGNS))
+        return obs_df, camp_df
     except Exception as e:
-        st.error(f"خطأ في تحميل الملفات: تأكدي من رفع ملفات الإكسل بالأسماء الصحيحة. {e}")
+        st.error(f"حدث خطأ أثناء جلب البيانات من Google Sheets: {e}")
         return None, None
 
+# تحميل البيانات
 observers, campaigns = load_data()
 
+# واجهة التطبيق
 if observers is not None and campaigns is not None:
+    st.title("🚀 نظام تنظيم الحملات الرقابية")
+    
     # القائمة الجانبية
-    st.sidebar.image("https://cdn-icons-png.flaticon.com/512/9322/9322127.png", width=100)
-    st.sidebar.title("نظام الرقابة الذكي")
-    menu = ["🏠 لوحة التحكم", "📅 تخطيط حملة جديدة", "👥 دليل المراقبين"]
-    choice = st.sidebar.radio("القائمة الرئيسية", menu)
+    menu = ["لوحة التحكم", "تخطيط حملة جديدة", "دليل المراقبين"]
+    choice = st.sidebar.selectbox("القائمة", menu)
 
-    if choice == "🏠 لوحة التحكم":
-        st.title("📊 مؤشرات الأداء العام")
+    if choice == "لوحة التحكم":
+        st.subheader("📊 ملخص الحملات الحالية")
+        st.dataframe(campaigns, use_container_width=True)
         
-        # إحصائيات سريعة
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("إجمالي الحملات", len(campaigns))
-        c2.metric("عدد المراقبين", len(observers))
-        c3.metric("المنشآت المستهدفة", int(campaigns['عدد المنشآت بناءً على المسح الميداني'].sum()))
-        c4.metric("المناطق", campaigns['المنطقة'].nunique())
-
-        st.divider()
+    elif choice == "تخطيط حملة جديدة":
+        st.subheader("📅 جدولة حملة إلكترونية")
+        # هنا نستخدم بيانات "المدينة" و "المنطقة" من الشيت لعمل القوائم المنسدلة
+        region = st.selectbox("اختر المنطقة", campaigns['المنطقة'].unique())
+        st.info(f"سيتم تصفية المراقبين المتاحين في {region}")
         
-        # رسم بياني
-        fig = px.pie(campaigns, names='المنطقة', title="توزيع الحملات حسب المناطق", hole=0.3)
-        st.plotly_chart(fig, use_container_width=True)
-
-    elif choice == "📅 تخطيط حملة جديدة":
-        st.title("➕ إنشاء حملة رقابية إلكترونية")
-        
-        with st.form("new_camp"):
-            col1, col2 = st.columns(2)
-            with col1:
-                camp_name = st.selectbox("اختر اسم التجمع", campaigns['اسم التجمع'].unique())
-                leader = st.text_input("جهة القيادة (مثلاً: وزارة التجارة)")
-            with col2:
-                target_date = st.date_input("تحديد تاريخ الحملة")
-                target_region = campaigns[campaigns['اسم التجمع'] == camp_name]['المنطقة'].iloc[0]
-                st.info(f"المنطقة المختارة: {target_region}")
-
-            st.divider()
-            st.subheader("توزيع فرق العمل الميدانية")
-            
-            # تصفية المراقبين بناءً على منطقة التجمع والحالة
-            available_staff = observers[(observers['المنطقة'] == target_region) & (observers['حالة المراقب'] == 'نشط')]
-            
-            selected_staff = st.multiselect("اختر المراقبين المشاركين (بناءً على النطاق الجغرافي)", 
-                                           options=available_staff['الاسم'].tolist())
-            
-            goals = st.text_area("الأهداف الرقابية المستهدفة لهذه الحملة")
-            
-            submit = st.form_submit_button("اعتماد وتوثيق الحملة")
-            if submit:
-                st.success(f"تم بنجاح جدولة حملة '{camp_name}' في منطقة {target_region}. تم إرسال الإشعارات للمراقبين.")
-
-    elif choice == "👥 دليل المراقبين":
-        st.title("👥 بيانات المراقبين ومأموري الضبط")
-        
-        # فلاتر البحث
-        search_col1, search_col2 = st.columns(2)
-        with search_col1:
-            filt_region = st.selectbox("فلترة حسب المنطقة", ["الكل"] + list(observers['المنطقة'].unique()))
-        
-        df_display = observers.copy()
-        if filt_region != "الكل":
-            df_display = df_display[df_display['المنطقة'] == filt_region]
-            
-        st.dataframe(df_display, use_container_width=True)
+    elif choice == "دليل المراقبين":
+        st.subheader("👥 بيانات المراقبين المسجلة في Google Sheets")
+        st.write("أحدث البيانات المحدثة:")
+        st.dataframe(observers, use_container_width=True)
 
 else:
-    st.warning("يرجى التأكد من رفع ملفات الإكسل في GitHub لتفعيل النظام.")
+    st.info("بانتظار ربط روابط Google Sheets الصحيحة في الكود.")
