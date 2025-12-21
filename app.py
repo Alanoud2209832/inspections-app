@@ -4,52 +4,56 @@ import pandas as pd
 # إعدادات الصفحة
 st.set_page_config(page_title="نظام الرقابة الذكي", layout="wide")
 
-# --- روابط Google Sheets ---
-# انسخي الروابط الكاملة من المتصفح وضعيها هنا
-URL_OBSERVERS = "https://docs.google.com/spreadsheets/d/1k-bUZ2OMPEUihzsP2g18GJFpbh7ja3Qc/edit?usp=sharing&ouid=109392900872958236563&rtpof=true&sd=true"
-URL_CAMPAIGNS = "https://docs.google.com/spreadsheets/d/1l0G8LReiliMcdl6Dpeyg2NTsVK6sG711/edit?usp=sharing&ouid=109392900872958236563&rtpof=true&sd=true"
+# --- الروابط المباشرة المستخرجة من روابطك ---
 
-def get_csv_url(url):
-    """دالة لتحويل رابط جوجل شيت العادي إلى رابط تحميل مباشر CSV"""
-    if "edit" in url:
-        return url.replace('/edit', '/export?format=csv') + "&gid=" + url.split('gid=')[-1]
-    return url
+# ملف المراقبين (Observers)
+# تم استخراج ID و GID من الرابط الأول
+URL_OBSERVERS = "https://docs.google.com/spreadsheets/d/1xpp9MmUSjBg4EgGXeRIGwQghtMxAYuW2lFL8YSRZJRg/export?format=csv&gid=1189139415"
 
-@st.cache_data(ttl=60) # تحديث البيانات كل 60 ثانية إذا تغيرت في جوجل شيت
+# ملف الحملات (Campaigns)
+# تم استخراج ID و GID من الرابط الثاني
+URL_CAMPAIGNS = "https://docs.google.com/spreadsheets/d/1aApLVf9PPIcClcelziEzUqwWXFrc8a4pZgfqesQoQBw/export?format=csv&gid=1064973789"
+
+@st.cache_data(ttl=60)
 def load_data():
     try:
-        obs_df = pd.read_csv(get_csv_url(URL_OBSERVERS))
-        camp_df = pd.read_csv(get_csv_url(URL_CAMPAIGNS))
+        # قراءة البيانات مباشرة من روابط التصدير
+        obs_df = pd.read_csv(URL_OBSERVERS)
+        camp_df = pd.read_csv(URL_CAMPAIGNS)
         return obs_df, camp_df
     except Exception as e:
-        st.error(f"حدث خطأ أثناء جلب البيانات من Google Sheets: {e}")
+        st.error(f"خطأ في الاتصال بجداول جوجل: {e}")
         return None, None
 
 # تحميل البيانات
 observers, campaigns = load_data()
 
-# واجهة التطبيق
+# عرض الواجهة في حال نجاح الاتصال
 if observers is not None and campaigns is not None:
-    st.title("🚀 نظام تنظيم الحملات الرقابية")
+    st.success("تم الربط بنجاح مع Google Sheets ✅")
     
-    # القائمة الجانبية
-    menu = ["لوحة التحكم", "تخطيط حملة جديدة", "دليل المراقبين"]
-    choice = st.sidebar.selectbox("القائمة", menu)
+    # القائمة الجانبية للتنقل
+    st.sidebar.title("القائمة الرئيسية")
+    page = st.sidebar.radio("انتقل إلى:", ["لوحة التحكم", "بيانات المراقبين", "بيانات الحملات"])
 
-    if choice == "لوحة التحكم":
-        st.subheader("📊 ملخص الحملات الحالية")
-        st.dataframe(campaigns, use_container_width=True)
+    if page == "لوحة التحكم":
+        st.title("📊 ملخص النظام")
+        col1, col2 = st.columns(2)
+        col1.metric("عدد المراقبين المسجلين", len(observers))
+        col2.metric("عدد الحملات المخططة", len(campaigns))
         
-    elif choice == "تخطيط حملة جديدة":
-        st.subheader("📅 جدولة حملة إلكترونية")
-        # هنا نستخدم بيانات "المدينة" و "المنطقة" من الشيت لعمل القوائم المنسدلة
-        region = st.selectbox("اختر المنطقة", campaigns['المنطقة'].unique())
-        st.info(f"سيتم تصفية المراقبين المتاحين في {region}")
-        
-    elif choice == "دليل المراقبين":
-        st.subheader("👥 بيانات المراقبين المسجلة في Google Sheets")
-        st.write("أحدث البيانات المحدثة:")
+        st.divider()
+        st.subheader("آخر التحديثات من الجداول")
+        st.write("بيانات الحملات الأخيرة:")
+        st.table(campaigns.head(3))
+
+    elif page == "بيانات المراقبين":
+        st.title("👥 دليل المراقبين")
         st.dataframe(observers, use_container_width=True)
 
+    elif page == "بيانات الحملات":
+        st.title("📅 تفاصيل الحملات")
+        st.dataframe(campaigns, use_container_width=True)
+
 else:
-    st.info("بانتظار ربط روابط Google Sheets الصحيحة في الكود.")
+    st.warning("تأكدي من تفعيل خيار 'Anyone with the link can view' في ملفات Google Sheets.")
