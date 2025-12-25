@@ -3,129 +3,80 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
-# 1. إعدادات الصفحة الأساسية
+# 1. إعدادات الصفحة
 st.set_page_config(page_title="نظام الرقابة الذكي", layout="wide", page_icon="🚀")
 
-# 2. إنشاء الاتصال بجداول جوجل (يستخدم Secrets تلقائياً)
+# 2. إنشاء الاتصال (سيبحث تلقائياً عن [connections.gsheets] في Secrets)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# 3. روابط ملفات Google Sheets الخاصة بكِ
+# 3. روابط الملفات (استخدمي روابط المتصفح العادية هنا)
 URL_OBSERVERS = "https://docs.google.com/spreadsheets/d/1xpp9MmUSjBg4EgGXeRIGwQghtMxAYuW2lFL8YSRZJRg/edit?usp=sharing"
 URL_CAMPAIGNS = "https://docs.google.com/spreadsheets/d/1aApLVf9PPIcClcelziEzUqwWXFrc8a4pZgfqesQoQBw/edit?usp=sharing"
 
-# 4. وظائف جلب البيانات
-@st.cache_data(ttl=60)
-def get_observers_data():
-    return conn.read(spreadsheet=URL_OBSERVERS)
+# 4. وظائف جلب البيانات مع التحديث التلقائي
+@st.cache_data(ttl=10) # تحديث كل 10 ثوانٍ لضمان رؤية البيانات الجديدة فوراً
+def get_data(url):
+    return conn.read(spreadsheet=url)
 
-@st.cache_data(ttl=60)
-def get_campaigns_data():
-    return conn.read(spreadsheet=URL_CAMPAIGNS)
-
-# 5. القائمة الجانبية (Sidebar)
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3203/3203071.png", width=100)
+# 5. القائمة الجانبية
 st.sidebar.title("نظام الرقابة الذكي")
 menu = ["📊 لوحة التحكم", "➕ إنشاء حملة جديدة", "📅 سجل الحملات", "👥 دليل المراقبين"]
 choice = st.sidebar.radio("القائمة الرئيسية", menu)
 
-st.sidebar.divider()
-if st.sidebar.button("تحديث البيانات 🔄"):
-    st.cache_data.clear()
-    st.rerun()
+# --- محتوى الصفحات ---
 
-# --- الصفحات ---
-
-# الصفحة الأولى: لوحة التحكم
 if choice == "📊 لوحة التحكم":
-    st.title("📈 لوحة مؤشرات النظام")
-    col1, col2, col3 = st.columns(3)
-    
+    st.title("📈 ملخص النظام")
     try:
-        obs_df = get_observers_data()
-        camp_df = get_campaigns_data()
+        obs_df = get_data(URL_OBSERVERS)
+        camp_df = get_data(URL_CAMPAIGNS)
         
-        col1.metric("عدد المراقبين", len(obs_df))
-        col2.metric("الحملات المجدولة", len(camp_df))
-        col3.metric("الحالة التشغيلية", "نشط")
-        
-        st.divider()
-        st.subheader("آخر 5 حملات تم إنشاؤها")
-        st.table(camp_df.tail(5))
-    except:
-        st.info("بانتظار مزامنة البيانات من Google Sheets...")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("عدد المراقبين", len(obs_df))
+        c2.metric("الحملات المسجلة", len(camp_df))
+        c3.metric("حالة الربط", "متصل ✅")
+    except Exception as e:
+        st.error(f"تأكد من إعدادات Secrets وصلاحيات الملف: {e}")
 
-# الصفحة الثانية: نموذج إنشاء حملة (الفورم)
 elif choice == "➕ إنشاء حملة جديدة":
-    st.title("📝 تخطيط حملة رقابية جديدة")
-    st.write("يرجى تعبئة الحقول أدناه لجدولة الحملة وتوثيق أهدافها.")
-
-    with st.form("new_campaign_form", clear_on_submit=True):
+    st.title("📝 نموذج جدولة حملة")
+    
+    with st.form("add_campaign_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            camp_name = st.text_input("اسم الحملة", placeholder="مثال: جولة تفتيش المنشآت")
-            camp_date = st.date_input("تاريخ الحملة", datetime.now())
-            location = st.text_input("الموقع الجغرافي (الحي/المدينة)")
-        
+            name = st.text_input("اسم الحملة")
+            date = st.date_input("التاريخ", datetime.now())
+            loc = st.text_input("الموقع")
         with col2:
-            participants = st.multiselect("الجهات المشاركة", ["وزارة التجارة", "البلدية", "الشرطة", "الموارد البشرية", "الغذاء والدواء"])
-            scope = st.selectbox("نطاق الحملة", ["نطاق ضيق (مبنى/منشأة)", "بلدية فرعية/حي", "منطقة كاملة"])
-            camp_time = st.time_input("وقت الانطلاق")
-
-        objectives = st.text_area("الأهداف الرقابية المستهدفة", placeholder="اكتب بالتفصيل ما تهدف إليه هذه الحملة...")
+            time = st.time_input("الوقت")
+            parts = st.multiselect("الجهات", ["التجارة", "البلدية", "الشرطة"])
+            scope = st.selectbox("النطاق", ["حي", "مدينة", "منطقة"])
+            
+        goals = st.text_area("الأهداف الرقابية")
         
-        submit_button = st.form_submit_button("حفظ الحملة في قاعدة البيانات 💾")
-        
-        if submit_button:
-            if camp_name and objectives:
-                try:
-                    # قراءة البيانات الحالية
-                    existing_data = get_campaigns_data()
-                    
-                    # تجهيز السطر الجديد
-                    new_row = pd.DataFrame([{
-                        "اسم التجمع": camp_name,
-                        "التاريخ": str(camp_date),
-                        "الوقت": str(camp_time),
-                        "الموقع": location,
-                        "الجهات المشاركة": ", ".join(participants),
-                        "النطاق الجغرافي": scope,
-                        "الأهداف": objectives
-                    }])
-                    
-                    # دمج السطر الجديد مع البيانات القديمة
-                    updated_df = pd.concat([existing_data, new_row], ignore_index=True)
-                    
-                    # تحديث ملف Google Sheets
-                    conn.update(spreadsheet=URL_CAMPAIGNS, data=updated_df)
-                    
-                    st.success(f"✅ تم حفظ حملة '{camp_name}' بنجاح في Google Sheets!")
-                    st.balloons()
-                    st.cache_data.clear()
-                except Exception as e:
-                    st.error(f"حدث خطأ أثناء الحفظ: {e}")
+        if st.form_submit_button("حفظ الحملة 💾"):
+            if name and goals:
+                # جلب البيانات الحالية
+                current_df = conn.read(spreadsheet=URL_CAMPAIGNS)
+                # إضافة السطر الجديد
+                new_row = pd.DataFrame([{
+                    "اسم التجمع": name, "التاريخ": str(date), "الوقت": str(time),
+                    "الموقع": loc, "الجهات المشاركة": ", ".join(parts),
+                    "النطاق": scope, "الأهداف": goals
+                }])
+                updated_df = pd.concat([current_df, new_row], ignore_index=True)
+                # الحفظ الفعلي
+                conn.update(spreadsheet=URL_CAMPAIGNS, data=updated_df)
+                st.success("تم الحفظ بنجاح!")
+                st.balloons()
+                st.cache_data.clear()
             else:
-                st.warning("⚠️ فضلاً، تأكد من إدخال اسم الحملة والأهداف الرقابية.")
+                st.warning("أكمل البيانات المطلوبة")
 
-# الصفحة الثالثة: سجل الحملات
 elif choice == "📅 سجل الحملات":
-    st.title("📋 سجل الحملات التاريخي")
-    try:
-        df = get_campaigns_data()
-        search_query = st.text_input("🔍 بحث في السجل (بالاسم، الموقع، أو التاريخ)")
-        if search_query:
-            df = df[df.apply(lambda row: row.astype(str).str.contains(search_query, case=False).any(), axis=1)]
-        st.dataframe(df, use_container_width=True)
-    except:
-        st.error("لا يمكن الوصول لبيانات سجل الحملات حالياً.")
+    st.title("📋 سجل العمليات")
+    st.dataframe(get_data(URL_CAMPAIGNS), use_container_width=True)
 
-# الصفحة الرابعة: دليل المراقبين
 elif choice == "👥 دليل المراقبين":
-    st.title("👨‍✈️ قاعدة بيانات المراقبين والجهات")
-    try:
-        df = get_observers_data()
-        search_obs = st.text_input("🔍 بحث عن مراقب (بالاسم، المدينة، أو رقم الجوال)")
-        if search_obs:
-            df = df[df.apply(lambda row: row.astype(str).str.contains(search_obs, case=False).any(), axis=1)]
-        st.dataframe(df, use_container_width=True)
-    except:
-        st.error("لا يمكن الوصول لبيانات المراقبين حالياً.")
+    st.title("👨‍✈️ بيانات المراقبين")
+    st.dataframe(get_data(URL_OBSERVERS), use_container_width=True)
