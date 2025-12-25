@@ -1,150 +1,131 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
+from datetime import datetime
 
-st.set_page_config(page_title="نظام الرقابة الذكي", layout="wide")
+# 1. إعدادات الصفحة الأساسية
+st.set_page_config(page_title="نظام الرقابة الذكي", layout="wide", page_icon="🚀")
 
-# إنشاء الاتصال بجداول بيانات جوجل باستخدام Secrets
+# 2. إنشاء الاتصال بجداول جوجل (يستخدم Secrets تلقائياً)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# روابط الملفات
+# 3. روابط ملفات Google Sheets الخاصة بكِ
 URL_OBSERVERS = "https://docs.google.com/spreadsheets/d/1xpp9MmUSjBg4EgGXeRIGwQghtMxAYuW2lFL8YSRZJRg/edit?usp=sharing"
 URL_CAMPAIGNS = "https://docs.google.com/spreadsheets/d/1aApLVf9PPIcClcelziEzUqwWXFrc8a4pZgfqesQoQBw/edit?usp=sharing"
 
-# تنظيف الكاش وتحديث البيانات
-st.sidebar.button("تحديث البيانات 🔄", on_click=lambda: st.cache_data.clear())
+# 4. وظائف جلب البيانات
+@st.cache_data(ttl=60)
+def get_observers_data():
+    return conn.read(spreadsheet=URL_OBSERVERS)
 
-# القائمة الجانبية
-menu = ["لوحة التحكم", "إنشاء حملة (الفورم)", "سجل الحملات"]
+@st.cache_data(ttl=60)
+def get_campaigns_data():
+    return conn.read(spreadsheet=URL_CAMPAIGNS)
+
+# 5. القائمة الجانبية (Sidebar)
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3203/3203071.png", width=100)
+st.sidebar.title("نظام الرقابة الذكي")
+menu = ["📊 لوحة التحكم", "➕ إنشاء حملة جديدة", "📅 سجل الحملات", "👥 دليل المراقبين"]
 choice = st.sidebar.radio("القائمة الرئيسية", menu)
 
-if choice == "لوحة التحكم":
-    st.title("📊 نظام الرقابة - لوحة التحكم")
-    st.info("استخدم القائمة الجانبية للتنقل بين إدخال البيانات وعرض السجلات.")
+st.sidebar.divider()
+if st.sidebar.button("تحديث البيانات 🔄"):
+    st.cache_data.clear()
+    st.rerun()
 
-elif choice == "إنشاء حملة (الفورم)":
-    st.title("➕ جدولة حملة رقابية جديدة")
+# --- الصفحات ---
+
+# الصفحة الأولى: لوحة التحكم
+if choice == "📊 لوحة التحكم":
+    st.title("📈 لوحة مؤشرات النظام")
+    col1, col2, col3 = st.columns(3)
     
-    # جلب بيانات المراقبين لعرضها في الاختيارات
-    observers_df = conn.read(spreadsheet=URL_OBSERVERS)
-    
-    with st.form("campaign_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            camp_name = st.text_input("اسم الحملة")
-            camp_date = st.date_input("تاريخ الحملة")
-            location = st.text_input("الموقع الجغرافي")
-        with col2:
-            participants = st.multiselect("الجهات المشاركة", ["وزارة التجارة", "البلدية", "الشرطة", "الموارد البشرية"])
-            scope = st.selectbox("النطاق الجغرافي", ["حي محدد", "منطقة كاملة", "بلدية فرعية"])
+    try:
+        obs_df = get_observers_data()
+        camp_df = get_campaigns_data()
         
-        objectives = st.text_area("الأهداف الرقابية المستهدفة")
+        col1.metric("عدد المراقبين", len(obs_df))
+        col2.metric("الحملات المجدولة", len(camp_df))
+        col3.metric("الحالة التشغيلية", "نشط")
         
-        submit = st.form_submit_button("حفظ الحملة في Google Sheets")
-        
-        if submit:
-            if camp_name and objectives:
-                # قراءة البيانات الحالية لإضافة السطر الجديد
-                existing_data = conn.read(spreadsheet=URL_CAMPAIGNS)
-                
-                new_row = pd.DataFrame([{
-                    "اسم التجمع": camp_name,
-                    "التاريخ": str(camp_date),
-                    "الموقع": location,
-                    "الجهات المشاركة": ", ".join(participants),
-                    "النطاق": scope,
-                    "الأهداف": objectives
-                }])
-                
-                updated_df = pd.concat([existing_data, new_row], ignore_index=True)
-                
-                # حفظ البيانات فعلياً في الجدول
-                conn.update(spreadsheet=URL_CAMPAIGNS, data=updated_df)
-                st.success("✅ تم حفظ البيانات بنجاح في الجدول!")
-                st.balloons()
-            else:
-                st.error("يرجى ملء الحقول الأساسية.")
+        st.divider()
+        st.subheader("آخر 5 حملات تم إنشاؤها")
+        st.table(camp_df.tail(5))
+    except:
+        st.info("بانتظار مزامنة البيانات من Google Sheets...")
 
-elif choice == "سجل الحملات":
-    st.title("📅 سجل الحملات المجدولة")
-    data = conn.read(spreadsheet=URL_CAMPAIGNS)
-    st.dataframe(data, use_container_width=True)
+# الصفحة الثانية: نموذج إنشاء حملة (الفورم)
+elif choice == "➕ إنشاء حملة جديدة":
+    st.title("📝 تخطيط حملة رقابية جديدة")
+    st.write("يرجى تعبئة الحقول أدناه لجدولة الحملة وتوثيق أهدافها.")
 
-elif choice == "دليل المراقبين":
-    st.title("👥 بيانات المراقبين والجهات")
-    if observers is not None:
-        # إضافة خاصية البحث
-        search = st.text_input("بحث عن مراقب...")
-        if search:
-            filtered_df = observers[observers.apply(lambda row: row.astype(str).str.contains(search, case=False).any(), axis=1)]
-            st.dataframe(filtered_df, use_container_width=True)
-        else:
-            st.dataframe(observers, use_container_width=True)
-            import streamlit as st
-import pandas as pd
-from datetime import datetime
-
-# إعدادات الصفحة
-st.set_page_config(page_title="نظام الرقابة الذكي", layout="wide")
-
-# الروابط (تأكدي أن الملفات "Anyone with the link can view")
-URL_CAMPAIGNS = "https://docs.google.com/spreadsheets/d/1aApLVf9PPIcClcelziEzUqwWXFrc8a4pZgfqesQoQBw/export?format=csv&gid=1064973789"
-
-# 1. مكان الفورم (الاستمارة)
-def show_form():
-    st.title("➕ إنشاء حملة رقابية جديدة")
-    
-    # بداية الفورم
     with st.form("new_campaign_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            camp_name = st.text_input("اسم الحملة")
+            camp_name = st.text_input("اسم الحملة", placeholder="مثال: جولة تفتيش المنشآت")
             camp_date = st.date_input("تاريخ الحملة", datetime.now())
-            participants = st.multiselect("الجهات المشاركة", ["وزارة التجارة", "البلدية", "الشرطة", "الموارد البشرية"])
+            location = st.text_input("الموقع الجغرافي (الحي/المدينة)")
         
         with col2:
-            location = st.text_input("الموقع الجغرافي (الحي/المدينة)")
-            scope = st.selectbox("نطاق الحملة", ["نطاق ضيق", "بلدية فرعية", "منطقة كاملة"])
+            participants = st.multiselect("الجهات المشاركة", ["وزارة التجارة", "البلدية", "الشرطة", "الموارد البشرية", "الغذاء والدواء"])
+            scope = st.selectbox("نطاق الحملة", ["نطاق ضيق (مبنى/منشأة)", "بلدية فرعية/حي", "منطقة كاملة"])
             camp_time = st.time_input("وقت الانطلاق")
 
-        objectives = st.text_area("الأهداف الرقابية المستهدفة")
+        objectives = st.text_area("الأهداف الرقابية المستهدفة", placeholder="اكتب بالتفصيل ما تهدف إليه هذه الحملة...")
         
-        # زر الحفظ
-        submit_button = st.form_submit_button("حفظ الحملة في قاعدة البيانات")
+        submit_button = st.form_submit_button("حفظ الحملة في قاعدة البيانات 💾")
         
         if submit_button:
             if camp_name and objectives:
-                # تجهيز البيانات الجديدة كسطر واحد
-                new_data = {
-                    "اسم التجمع": camp_name,
-                    "التاريخ": str(camp_date),
-                    "الموقع": location,
-                    "الجهات المشاركة": ", ".join(participants),
-                    "الأهداف": objectives
-                }
-                
-                # إظهار رسالة نجاح (مؤقتة حتى يتم تفعيل الـ API الفعلي للكتابة)
-                st.success(f"✅ تم إرسال بيانات حملة ({camp_name}) بنجاح!")
-                st.balloons()
-                
-                # عرض البيانات التي تم حفظها
-                st.info("سيتم تسجيل السطر التالي في Google Sheets:")
-                st.write(new_data)
+                try:
+                    # قراءة البيانات الحالية
+                    existing_data = get_campaigns_data()
+                    
+                    # تجهيز السطر الجديد
+                    new_row = pd.DataFrame([{
+                        "اسم التجمع": camp_name,
+                        "التاريخ": str(camp_date),
+                        "الوقت": str(camp_time),
+                        "الموقع": location,
+                        "الجهات المشاركة": ", ".join(participants),
+                        "النطاق الجغرافي": scope,
+                        "الأهداف": objectives
+                    }])
+                    
+                    # دمج السطر الجديد مع البيانات القديمة
+                    updated_df = pd.concat([existing_data, new_row], ignore_index=True)
+                    
+                    # تحديث ملف Google Sheets
+                    conn.update(spreadsheet=URL_CAMPAIGNS, data=updated_df)
+                    
+                    st.success(f"✅ تم حفظ حملة '{camp_name}' بنجاح في Google Sheets!")
+                    st.balloons()
+                    st.cache_data.clear()
+                except Exception as e:
+                    st.error(f"حدث خطأ أثناء الحفظ: {e}")
             else:
-                st.warning("يرجى ملء اسم الحملة والأهداف قبل الحفظ.")
+                st.warning("⚠️ فضلاً، تأكد من إدخال اسم الحملة والأهداف الرقابية.")
 
-# 2. القائمة الجانبية للتنقل
-menu = ["لوحة التحكم", "إنشاء حملة (الفورم)", "سجل الحملات"]
-choice = st.sidebar.radio("انتقل إلى:", menu)
+# الصفحة الثالثة: سجل الحملات
+elif choice == "📅 سجل الحملات":
+    st.title("📋 سجل الحملات التاريخي")
+    try:
+        df = get_campaigns_data()
+        search_query = st.text_input("🔍 بحث في السجل (بالاسم، الموقع، أو التاريخ)")
+        if search_query:
+            df = df[df.apply(lambda row: row.astype(str).str.contains(search_query, case=False).any(), axis=1)]
+        st.dataframe(df, use_container_width=True)
+    except:
+        st.error("لا يمكن الوصول لبيانات سجل الحملات حالياً.")
 
-if choice == "لوحة التحكم":
-    st.title("📊 لوحة المؤشرات")
-    st.write("مرحباً بك في نظام الرقابة. اختر 'إنشاء حملة' من القائمة الجانبية للبدء.")
-
-elif choice == "إنشاء حملة (الفورم)":
-    show_form() # استدعاء الفورم هنا
-
-elif choice == "سجل الحملات":
-    st.title("📅 سجل الحملات")
-    df = pd.read_csv(URL_CAMPAIGNS)
-    st.dataframe(df)
+# الصفحة الرابعة: دليل المراقبين
+elif choice == "👥 دليل المراقبين":
+    st.title("👨‍✈️ قاعدة بيانات المراقبين والجهات")
+    try:
+        df = get_observers_data()
+        search_obs = st.text_input("🔍 بحث عن مراقب (بالاسم، المدينة، أو رقم الجوال)")
+        if search_obs:
+            df = df[df.apply(lambda row: row.astype(str).str.contains(search_obs, case=False).any(), axis=1)]
+        st.dataframe(df, use_container_width=True)
+    except:
+        st.error("لا يمكن الوصول لبيانات المراقبين حالياً.")
