@@ -13,7 +13,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 URL_OBSERVERS = "https://docs.google.com/spreadsheets/d/1xpp9MmUSjBg4EgGXeRIGwQghtMxAYuW2lFL8YSRZJRg/edit?usp=sharing"
 URL_CAMPAIGNS = "https://docs.google.com/spreadsheets/d/1aApLVf9PPIcClcelziEzUqwWXFrc8a4pZgfqesQoQBw/edit?usp=sharing"
 
-# 4. وظائف جلب البيانات
+# 4. وظيفة جلب البيانات
 def get_data(url):
     return conn.read(spreadsheet=url, ttl=0)
 
@@ -54,7 +54,7 @@ elif choice == "➕ إنشاء حملة جديدة":
             
         with col2:
             survey_count = st.number_input("عدد المنشآت بناءً على المسح الميداني", min_value=0, step=1)
-            inspectors = st.text_area("مأموري الضبط من وزارة التجارة", placeholder="اكتب الأسماء هنا...")
+            inspectors = st.text_area("مأموري الضبط من وزارة التجارة")
             map_link = st.text_input("موقع التجمع على الخرائط (رابط Google Maps)")
             
         submitted = st.form_submit_button("حفظ البيانات في الجدول 💾")
@@ -65,8 +65,17 @@ elif choice == "➕ إنشاء حملة جديدة":
                     # جلب البيانات الحالية
                     current_df = conn.read(spreadsheet=URL_CAMPAIGNS, ttl=0)
                     
-                    # إنشاء السطر الجديد بمسميات الأعمدة الخاصة بكِ تماماً
+                    # حساب الرقم التسلسلي الجديد (م)
+                    if not current_df.empty:
+                        # تحويل العمود "م" لرقم وأخذ أكبر قيمة وإضافة 1
+                        next_id = pd.to_numeric(current_df['م'], errors='coerce').max() + 1
+                        if pd.isna(next_id): next_id = 1
+                    else:
+                        next_id = 1
+
+                    # إنشاء السطر الجديد بنفس ترتيب مسميات ملفك بالضبط
                     new_entry = pd.DataFrame([{
+                        "م": int(next_id),
                         "اليوم والتاريخ": day_date,
                         "المنطقة": region,
                         "المدينة": city,
@@ -79,16 +88,16 @@ elif choice == "➕ إنشاء حملة جديدة":
                     # دمج البيانات
                     updated_df = pd.concat([current_df, new_entry], ignore_index=True).fillna("")
                     
-                    # الحفظ في جوجل شيت
+                    # الحفظ الفعلي
                     conn.update(spreadsheet=URL_CAMPAIGNS, data=updated_df)
                     
-                    st.success(f"✅ تم حفظ بيانات '{group_name}' بنجاح!")
+                    st.success(f"✅ تم حفظ بيانات التجمع رقم ({next_id}) بنجاح!")
                     st.balloons()
                 except Exception as e:
-                    st.error("⚠️ حدث خطأ أثناء الحفظ. تأكدي من أن أعمدة ملف الإكسل تبدأ من السطر الأول وبنفس المسميات.")
-                    st.expander("تفاصيل تقنية").write(e)
+                    st.error("⚠️ حدث خطأ أثناء الحفظ. تأكدي من تطابق مسميات الأعمدة.")
+                    st.expander("تفاصيل تقنية للمطور").write(e)
             else:
-                st.warning("⚠️ يرجى تعبئة الحقول الأساسية (التاريخ واسم التجمع).")
+                st.warning("⚠️ يرجى تعبئة الحقول الأساسية.")
 
 elif choice == "📅 سجل الحملات":
     st.title("📋 سجل جميع الحملات الميدانية")
