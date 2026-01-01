@@ -1,63 +1,76 @@
 import streamlit as st
-from database import init_db, add_campaign, get_campaigns, upload_old_data
+from database import init_db, add_campaign, get_campaigns, get_observers
 import pandas as pd
 
-# تهيئة الصفحة وقاعدة البيانات
-st.set_page_config(page_title="نظام الرقابة - Neon DB", layout="wide")
+# إعدادات الصفحة
+st.set_page_config(page_title="نظام الرقابة الذكي", layout="wide", page_icon="🛡️")
+
+# تهيئة قاعدة البيانات عند تشغيل التطبيق
 init_db()
 
 # القائمة الجانبية
-st.sidebar.title("🛠️ لوحة التحكم")
-menu = ["📊 الإحصائيات", "➕ إضافة حملة", "📋 السجل العام", "⚙️ إعدادات (نقل البيانات)"]
-choice = st.sidebar.radio("القائمة", menu)
+st.sidebar.title("🛠️ القائمة الرئيسية")
+menu = ["📊 الإحصائيات", "➕ إضافة حملة جديدة", "📋 سجل الحملات", "👥 دليل المراقبين"]
+choice = st.sidebar.radio("انتقل إلى:", menu)
 
+# --- صفحة الإحصائيات ---
 if choice == "📊 الإحصائيات":
-    st.title("📈 ملخص العمليات")
-    df = get_campaigns()
-    if not df.empty:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("إجمالي الحملات في القاعدة", len(df))
-        c2.metric("إجمالي المنشآت", int(df["عدد المنشآت بناءً على المسح الميداني"].sum()))
-        c3.metric("المصدر", "قاعدة بيانات Neon ☁️")
-        st.subheader("أحدث البيانات المضافة")
-        st.dataframe(df.head(10), use_container_width=True)
-    else:
-        st.info("قاعدة البيانات فارغة حالياً.")
+    st.title("📈 لوحة مؤشرات النظام")
+    df_c = get_campaigns()
+    df_o = get_observers()
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("إجمالي الحملات", len(df_c))
+    col2.metric("عدد المراقبين المسجلين", len(df_o))
+    col3.metric("حالة القاعدة", "Neon PostgreSQL ✅")
 
-elif choice == "➕ إضافة حملة":
-    st.title("📝 إدخال بيانات جديدة")
-    with st.form("main_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
+    st.divider()
+    if not df_c.empty:
+        st.subheader("أحدث الحملات الميدانية")
+        st.dataframe(df_c.head(10), use_container_width=True)
+
+# --- صفحة إضافة حملة ---
+elif choice == "➕ إضافة حملة جديدة":
+    st.title("📝 إدخال بيانات حملة ميدانية")
+    with st.form("add_form", clear_on_submit=True):
+        c1, c2 = st.columns(2)
+        with c1:
             day_date = st.text_input("اليوم والتاريخ")
-            region = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "الشرقية", "عسير", "القصيم"])
+            region = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
             city = st.text_input("المدينة")
             group_name = st.text_input("اسم التجمع")
-        with col2:
-            survey_count = st.number_input("عدد المنشآت", min_value=0)
+        with c2:
+            survey_count = st.number_input("عدد المنشآت", min_value=0, step=1)
             inspectors = st.text_area("مأموري الضبط")
-            map_link = st.text_input("رابط الخرائط")
+            map_link = st.text_input("رابط الخرائط (Google Maps)")
         
-        if st.form_submit_button("حفظ في قاعدة البيانات 💾"):
-            data = {"day_date": day_date, "region": region, "city": city, 
-                    "group_name": group_name, "survey_count": survey_count, 
-                    "inspectors": inspectors, "map_link": map_link}
-            add_campaign(data)
-            st.success("تم الحفظ بنجاح في Neon!")
+        if st.form_submit_button("حفظ البيانات في السحابة 💾"):
+            if group_name and city:
+                data = {
+                    "day_date": day_date, "region": region, "city": city,
+                    "group_name": group_name, "survey_count": survey_count,
+                    "inspectors": inspectors, "map_link": map_link
+                }
+                add_campaign(data)
+                st.success(f"تم تسجيل حملة {group_name} بنجاح!")
+                st.balloons()
+            else:
+                st.warning("يرجى إكمال البيانات الأساسية.")
 
-elif choice == "📋 السجل العام":
-    st.title("🗂️ قاعدة بيانات الرقابة")
+# --- صفحة سجل الحملات ---
+elif choice == "📋 سجل الحملات":
+    st.title("🗂️ سجل جميع الجولات الميدانية")
     df = get_campaigns()
-    search = st.text_input("🔍 ابحث (بالمدينة، الاسم، أو المنطقة)...")
+    search = st.text_input("🔍 بحث عن حملة...")
     if search:
         df = df[df.apply(lambda row: row.astype(str).str.contains(search, case=False).any(), axis=1)]
     st.dataframe(df, use_container_width=True)
 
-elif choice == "⚙️ إعدادات (نقل البيانات)":
-    st.title("⚙️ نقل البيانات القديمة")
-    st.warning("استخدم هذه الخاصية لمرة واحدة فقط لنقل بيانات ملف الإكسل القديم إلى Neon.")
-    uploaded_file = st.file_uploader("ارفع ملف الإكسل القديم (CSV أو Excel)", type=["csv", "xlsx"])
-    if uploaded_file and st.button("بدأ عملية النقل للقاعدة 🚀"):
-        old_df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('xlsx') else pd.read_csv(uploaded_file)
-        upload_old_data(old_df)
-        st.success("تم نقل جميع البيانات القديمة إلى Neon بنجاح!")
+# --- صفحة دليل المراقبين ---
+elif choice == "👥 دليل المراقبين":
+    st.title("👨‍✈️ دليل مأموري الضبط والمراقبين")
+    df_obs = get_observers()
+    search_obs = st.text_input("🔍 ابحث عن مراقب (بالاسم أو المنطقة)...")
+    if search_obs:
+        df_obs = df_obs[df_obs.apply(lambda row: row.astype(str).str.contains(search_obs, case=False).any(), axis=1)]
+    st.dataframe(df_obs, use_container_width=True)
