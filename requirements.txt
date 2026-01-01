@@ -4,3 +4,4 @@ openpyxl
 plotly
 st-gsheets-connection
 sqlalchemy
+psycopg2-binary
