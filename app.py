@@ -74,3 +74,44 @@ elif choice == "👥 دليل المراقبين":
     if search_obs:
         df_obs = df_obs[df_obs.apply(lambda row: row.astype(str).str.contains(search_obs, case=False).any(), axis=1)]
     st.dataframe(df_obs, use_container_width=True)
+
+
+elif choice == "👥 دليل المراقبين":
+    st.title("👨‍✈️ إدارة مأموري الضبط والمراقبين")
+    
+    # تقسيم الصفحة إلى تبويبين (Tabs)
+    tab1, tab2 = st.tabs(["📋 عرض القائمة", "➕ إضافة مراقب جديد"])
+    
+    with tab1:
+        df_obs = get_observers()
+        search_obs = st.text_input("🔍 ابحث عن مراقب (بالاسم، الجوال، أو المدينة)...")
+        if search_obs:
+            df_obs = df_obs[df_obs.apply(lambda row: row.astype(str).str.contains(search_obs, case=False).any(), axis=1)]
+        st.dataframe(df_obs, use_container_width=True)
+        
+    with tab2:
+        st.subheader("إدخال بيانات مراقب جديد")
+        with st.form("observer_form", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+            with col1:
+                name = st.text_input("الاسم الكامل")
+                email = st.text_input("الايميل")
+                phone = st.text_input("رقم الجوال")
+                status = st.selectbox("حالة المراقب", ["على راس العمل", "مجاز", "متقاعد"])
+            with col2:
+                work = st.text_input("جهة العمل", value="هيئة الزكاة والضريبة والجمارك")
+                region = st.selectbox("المنطقة ", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "الباحة", "تبوك", "القصيم", "حائل", "الجوف", "الحدود الشمالية", "نجران", "جازان"])
+                city = st.text_input("المدينة")
+            
+            if st.form_submit_button("حفظ المراقب 💾"):
+                if name and email:
+                    from database import add_observer # استدعاء الوظيفة الجديدة
+                    obs_data = {
+                        "name": name, "email": email, "status": status,
+                        "phone": phone, "work": work, "region": region, "city": city
+                    }
+                    add_observer(obs_data)
+                    st.success(f"تمت إضافة المراقب {name} بنجاح!")
+                    st.balloons()
+                else:
+                    st.warning("يرجى إدخال الاسم والايميل على الأقل.")
