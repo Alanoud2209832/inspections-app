@@ -65,3 +65,15 @@ def get_observers():
     with engine.connect() as conn:
         # جلب البيانات بدون اشتراط ترتيب معين لتجنب خطأ الرمز #
         return pd.read_sql("SELECT * FROM observers", conn)
+
+
+# وظيفة إضافة مراقب جديد
+def add_observer(data):
+    engine = get_engine()
+    with engine.connect() as conn:
+        query = text('''
+            INSERT INTO observers ("الاسم", "الايميل", "حالة المراقب", "الجوال", "جهة العمل", "المنطقة", "المدينة")
+            VALUES (:name, :email, :status, :phone, :work, :region, :city)
+        ''')
+        conn.execute(query, data)
+        conn.commit()
