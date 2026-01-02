@@ -63,5 +63,5 @@ def get_campaigns():
 def get_observers():
     engine = get_engine()
     with engine.connect() as conn:
-        # قمنا بوضع الرمز # بين علامتي تنصيص مزدوجة لكي يفهمه PostgreSQL كاسم عمود
-        return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
+        # جلب البيانات بدون اشتراط ترتيب معين لتجنب خطأ الرمز #
+        return pd.read_sql("SELECT * FROM observers", conn)
