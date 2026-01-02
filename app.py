@@ -56,11 +56,14 @@ elif choice == "👥 دليل المراقبين":
             col1, col2 = st.columns(2)
             with col1:
                 name = st.text_input("الاسم الكامل")
-                email = st.text_input("الايميل")
-                phone = st.text_input("رقم الجوال")
+                # إضافة ميزة التأكد من صيغة الإيميل
+                email = st.text_input("الايميل", placeholder="example@domain.com")
+                
+                # إجبار رقم الجوال على البدء بـ 966
+                phone_input = st.text_input("رقم الجوال", value="966", help="ابدأ بـ 966 ثم رقم الجوال")
+                
                 status = st.selectbox("حالة المراقب", ["على راس العمل", "مجاز", "متقاعد"])
             with col2:
-                # تعديل جهة العمل لتكون خيارات محددة كما طلبتِ
                 work = st.selectbox("جهة العمل", [
                     "هيئة الزكاة والضريبة والجمارك",
                     "وزارة البيئة والمياه والزراعة",
@@ -70,7 +73,25 @@ elif choice == "👥 دليل المراقبين":
                 city = st.text_input("المدينة")
             
             if st.form_submit_button("حفظ المراقب 💾"):
-                if name:
-                    add_observer({"name": name, "email": email, "status": status, "phone": phone, "work": work, "region": region, "city": city})
+                # التحقق من الشروط برمجياً قبل الإرسال للقاعدة
+                if not name:
+                    st.error("يرجى إدخال الاسم.")
+                elif "@" not in email or "." not in email:
+                    st.error("يرجى إدخال بريد إلكتروني صحيح.")
+                elif not phone_input.startswith("966"):
+                    st.error("يجب أن يبدأ رقم الجوال بـ 966")
+                elif len(phone_input) < 12:
+                    st.error("رقم الجوال قصير جداً، تأكد من كتابته كاملاً بعد 966")
+                else:
+                    # إذا كل الشروط تمام، يتم الحفظ
+                    add_observer({
+                        "name": name, 
+                        "email": email, 
+                        "status": status, 
+                        "phone": phone_input, 
+                        "work": work, 
+                        "region": region, 
+                        "city": city
+                    })
                     st.success(f"تمت إضافة {name} بنجاح!")
                     st.balloons()
