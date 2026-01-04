@@ -40,7 +40,7 @@ def init_db():
         '''))
         conn.commit()
 
-# وظائف جدول الحملات
+# تحديث وظيفة إضافة الحملة لتشمل قائد الفريق
 def add_campaign(data):
     engine = get_engine()
     with engine.connect() as conn:
@@ -48,11 +48,18 @@ def add_campaign(data):
             INSERT INTO campaigns 
             ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", 
              "عدد المنشآت بناءً على المسح الميداني", "مأموري الضبط من وزارة التجارة", 
-             "موقع التجمع على الخرائط")
-            VALUES (:day_date, :region, :city, :group_name, :survey_count, :inspectors, :map_link)
+             "موقع التجمع على الخرائط", "قائد الفريق")
+            VALUES (:day_date, :region, :city, :group_name, :survey_count, :inspectors, :map_link, :leader)
         ''')
         conn.execute(query, data)
         conn.commit()
+
+# وظيفة بسيطة لجلب قائمة الأسماء فقط من جدول المراقبين
+def get_observers_names():
+    engine = get_engine()
+    with engine.connect() as conn:
+        df = pd.read_sql('SELECT "الاسم" FROM observers ORDER BY "الاسم" ASC', conn)
+        return df["الاسم"].tolist()
 
 def get_campaigns():
     engine = get_engine()
