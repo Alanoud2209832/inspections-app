@@ -40,7 +40,7 @@ def init_db():
 def add_campaign(data):
     engine = get_engine()
     with engine.connect() as conn:
-        # تأكدي أن الأسماء هنا تطابق أسماء الأعمدة في Neon بالضبط
+        # تأكدي من ترتيب الأعمدة ومطابقتها لجدول Neon
         query = text('''
             INSERT INTO campaigns 
             ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", 
@@ -50,6 +50,7 @@ def add_campaign(data):
         ''')
         conn.execute(query, data)
         conn.commit()
+        
 
 def get_campaigns():
     engine = get_engine()
