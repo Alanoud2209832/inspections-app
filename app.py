@@ -26,9 +26,21 @@ if choice == "📊 الإحصائيات":
     st.dataframe(df_c.head(10), use_container_width=True)
 
 # --- صفحة إضافة حملة جديدة ---
+# --- جزء إضافة حملة جديدة المطور في app.py ---
 elif choice == "➕ إضافة حملة جديدة":
     st.title("📝 إدخال بيانات حملة ميدانية")
     
+    # 1. اختيار المنطقة (خارج الفورم لضمان التحديث الفوري للأسماء)
+    region = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
+    
+    # جلب المراقبين المفلترين بناءً على المنطقة المختارة
+    from database import get_observers_by_region
+    filtered_names = get_observers_by_region(region)
+    
+    if not filtered_names:
+        st.warning(f"⚠️ لا يوجد مراقبين مسجلين في منطقة {region}. يرجى إضافتهم من دليل المراقبين أولاً.")
+
+    # 2. بداية النموذج لإدخال بقية البيانات
     with st.form("main_campaign_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         
@@ -38,41 +50,36 @@ elif choice == "➕ إضافة حملة جديدة":
             day_name_ar = days_ar.get(selected_date.strftime("%A"), selected_date.strftime("%A"))
             full_date_str = f"{day_name_ar} {selected_date.strftime('%Y-%m-%d')}"
             
-            # اختيار المنطقة (سيؤثر على قوائم الأسماء)
-            region = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
-            
-            # جلب المراقبين المفلترين بناءً على المنطقة المختارة
-            filtered_names = get_observers_by_region(region)
-            
             city = st.text_input("المدينة")
             group_name = st.text_input("اسم التجمع")
             
         with col2:
-            # قائد الفريق (اختيار واحد)
-            leader = st.selectbox("قائد الفريق", options=filtered_names if filtered_names else ["لا يوجد مراقبين في هذه المنطقة"])
+            # قائد الفريق
+            leader = st.selectbox("قائد الفريق", options=filtered_names if filtered_names else ["لا يوجد مراقبين"])
             
-            # المراقبين المشاركين (اختيار متعدد)
-            participants = st.multiselect("تحديد المراقبين المشاركين", options=filtered_names, help="يمكنك اختيار أكثر من مراقب")
+            # المشاركين (Multi-select)
+            participants = st.multiselect("تحديد المراقبين المشاركين", options=filtered_names)
             
             survey_count = st.number_input("عدد المنشآت", min_value=0, step=1)
             inspectors = st.text_area("مأموري الضبط من جهات أخرى")
-            map_link = st.text_input("رابط الخرائط (Link)")
+            map_link = st.text_input("رابط الخرائط")
         
-        if st.form_submit_button("حفظ الحملة الميدانية 💾"):
-            if group_name and filtered_names and leader != "لا يوجد مراقبين في هذه المنطقة":
-                # دمج أسماء المشاركين في نص واحد مفصول بفاصلة
+        submit_button = st.form_submit_button("حفظ الحملة الميدانية 💾")
+        
+        if submit_button:
+            if group_name and filtered_names and leader != "لا يوجد مراقبين":
                 participants_str = ", ".join(participants) if participants else "لا يوجد"
                 
                 campaign_data = {
-                    "day_date": full_date_str,
-                    "region": region,
-                    "city": city,
-                    "group_name": group_name,
-                    "leader": leader,
+                    "day_date": str(full_date_str),
+                    "region": str(region), # نأخذ المنطقة المختارة من الأعلى
+                    "city": str(city),
+                    "group_name": str(group_name),
+                    "leader": str(leader),
                     "participants": participants_str,
                     "survey_count": int(survey_count),
-                    "inspectors": inspectors,
-                    "map_link": map_link
+                    "inspectors": str(inspectors),
+                    "map_link": str(map_link)
                 }
                 
                 try:
@@ -82,7 +89,7 @@ elif choice == "➕ إضافة حملة جديدة":
                 except Exception as e:
                     st.error(f"❌ فشل الحفظ: {e}")
             else:
-                st.error("⚠️ يرجى التأكد من اختيار المنطقة وإضافة مراقبين لها أولاً.")
+                st.error("⚠️ يرجى إدخال اسم التجمع والتأكد من وجود مراقبين في المنطقة.")
 
 # --- صفحة سجل الحملات ---
 elif choice == "📋 سجل الحملات":
