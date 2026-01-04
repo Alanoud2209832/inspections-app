@@ -5,21 +5,30 @@ import pandas as pd
 # إعدادات الصفحة الرسمية
 st.set_page_config(page_title="نظام الإدارة الرقابية", layout="wide")
 
-# تطبيق نمط CSS بسيط لتحسين المظهر
+# تحسين مظهر الواجهة عبر CSS
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
-    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #004b87; color: white; }
+    .stButton>button { 
+        width: 100%; 
+        border-radius: 5px; 
+        height: 3em; 
+        background-color: #004b87; 
+        color: white; 
+        font-weight: bold;
+    }
     .stSelectbox, .stTextInput, .stNumberInput { border-radius: 5px; }
+    div[data-testid="stMetricValue"] { font-size: 1.8rem; color: #004b87; }
     </style>
-    """, unsafe_allow_ Harris=True)
+    """, unsafe_allow_html=True)
 
+# تهيئة قاعدة البيانات
 init_db()
 
 # القائمة الجانبية
 st.sidebar.title("نظام الإدارة الميدانية")
 menu = ["الرئيسية والإحصائيات", "إضافة حملة جديدة", "سجل الحملات", "دليل المراقبين"]
-choice = st.sidebar.selectbox("القائمة:", menu)
+choice = st.sidebar.selectbox("القائمة الإجرائية:", menu)
 
 # --- الصفحة الرئيسية ---
 if choice == "الرئيسية والإحصائيات":
@@ -29,52 +38,59 @@ if choice == "الرئيسية والإحصائيات":
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("إجمالي الحملات", len(df_c))
+        st.metric("إجمالي الحملات المنفذة", len(df_c))
     with col2:
-        st.metric("المراقبين المسجلين", len(df_o))
+        st.metric("عدد المراقبين المعتمدين", len(df_o))
     with col3:
-        st.metric("الحالة", "متصل")
+        st.metric("حالة النظام", "نشط")
     
-    st.subheader("آخر الحملات المضافة")
-    st.dataframe(df_c.head(5), use_container_width=True)
+    st.divider()
+    st.subheader("أحدث النشاطات الميدانية")
+    st.dataframe(df_c.head(10), use_container_width=True)
 
 # --- صفحة إضافة حملة جديدة ---
 elif choice == "إضافة حملة جديدة":
     st.header("نموذج تسجيل حملة ميدانية")
     
-    # اختيار المنطقة خارج النموذج لتحديث البيانات فوراً
-    region = st.selectbox("منطقة العمل:", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
+    # اختيار المنطقة (خارج النموذج لضمان التحديث اللحظي للبيانات)
+    region = st.selectbox("المنطقة الإدارية للعمل:", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
     
+    from database import get_observers_by_region
     filtered_names = get_observers_by_region(region)
     
     if not filtered_names:
-        st.warning(f"لا يوجد مراقبين مسجلين في منطقة {region}. يرجى تحديث دليل المراقبين أولاً.")
+        st.info(f"تنبيه: لا يوجد مراقبين مسجلين حالياً في منطقة {region}.")
 
     with st.container():
         with st.form("campaign_form", clear_on_submit=True):
             col1, col2 = st.columns(2)
             
             with col1:
-                selected_date = st.date_input("تاريخ الحملة")
-                days_ar = {"Saturday": "السبت", "Sunday": "الأحد", "Monday": "الاثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة"}
-                full_date_str = f"{days_ar.get(selected_date.strftime('%A'))} {selected_date.strftime('%Y-%m-%d')}"
+                selected_date = st.date_input("تاريخ تنفيذ الحملة")
+                days_ar = {
+                    "Saturday": "السبت", "Sunday": "الأحد", "Monday": "الاثنين", 
+                    "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة"
+                }
+                day_name = days_ar.get(selected_date.strftime('%A'))
+                full_date_str = f"{day_name} {selected_date.strftime('%Y-%m-%d')}"
                 
-                city = st.text_input("المدينة")
+                city = st.text_input("المدينة / المحافظة")
                 group_name = st.text_input("اسم التجمع المستهدف")
             
             with col2:
-                leader = st.selectbox("قائد الفريق:", options=filtered_names if filtered_names else ["لا يوجد"])
+                leader = st.selectbox("قائد الفريق الميداني:", options=filtered_names if filtered_names else ["لا يوجد أسماء"])
                 participants = st.multiselect("المراقبين المشاركين:", options=filtered_names)
-                survey_count = st.number_input("عدد المنشآت (المسح الميداني)", min_value=0, step=1)
+                survey_count = st.number_input("إجمالي المنشآت (المسح الميداني)", min_value=0, step=1)
             
-            st.divider()
-            inspectors = st.text_area("مأموري الضبط المشاركين من جهات أخرى")
+            st.markdown("---")
+            inspectors = st.text_area("مأموري الضبط المشاركين من الجهات الحكومية الأخرى")
             map_link = st.text_input("رابط الموقع الجغرافي (Google Maps)")
             
-            submitted = st.form_submit_button("اعتماد وحفظ البيانات")
+            # زر الحفظ الرسمي
+            submitted = st.form_submit_button("اعتماد وحفظ بيانات الحملة")
             
             if submitted:
-                if group_name and filtered_names and leader != "لا يوجد":
+                if group_name and filtered_names and leader != "لا يوجد أسماء":
                     p_str = ", ".join(participants) if participants else "لا يوجد"
                     data = {
                         "day_date": full_date_str, "region": region, "city": city,
@@ -83,48 +99,54 @@ elif choice == "إضافة حملة جديدة":
                     }
                     try:
                         add_campaign(data)
-                        st.success("تم حفظ بيانات الحملة بنجاح في سجل النظام.")
+                        st.success("تم تسجيل بيانات الحملة في سجل النظام بنجاح.")
                     except Exception as e:
-                        st.error(f"حدث خطأ أثناء الحفظ: {e}")
+                        st.error(f"خطأ في الاتصال بقاعدة البيانات: {e}")
                 else:
-                    st.error("يرجى إكمال البيانات الأساسية قبل الحفظ.")
+                    st.error("يرجى استكمال الحقول الأساسية (اسم التجمع وقائد الفريق).")
 
 # --- صفحة سجل الحملات ---
 elif choice == "سجل الحملات":
-    st.header("سجل الجولات الرقابية")
+    st.header("سجل الجولات الرقابية المعتمدة")
     df = get_campaigns()
     
-    # فلتر بسيط للبحث
-    search = st.text_input("البحث عن حملة (اسم التجمع أو القائد):")
-    if search:
-        df = df[df['اسم التجمع'].str.contains(search) | df['قائد الفريق'].str.contains(search)]
+    # محرك بحث بسيط
+    search_query = st.text_input("البحث السريع (حسب اسم التجمع أو قائد الفريق):")
+    if search_query:
+        df = df[df['اسم التجمع'].str.contains(search_query, na=False) | 
+                df['قائد الفريق'].str.contains(search_query, na=False)]
         
     st.dataframe(df, use_container_width=True)
 
 # --- صفحة دليل المراقبين ---
 elif choice == "دليل المراقبين":
-    st.header("إدارة القوى البشرية (المراقبين)")
+    st.header("إدارة بيانات المراقبين")
     
-    tab1, tab2 = st.tabs(["قائمة المراقبين", "تسجيل مراقب جديد"])
+    tab1, tab2 = st.tabs(["قائمة الموظفين", "إضافة ملف مراقب"])
     
     with tab1:
         st.dataframe(get_observers(), use_container_width=True)
         
     with tab2:
+        st.subheader("تسجيل بيانات مراقب جديد")
         with st.form("obs_form", clear_on_submit=True):
             c1, c2 = st.columns(2)
             with c1:
-                name = st.text_input("الاسم الرباعي")
-                email = st.text_input("البريد الإلكتروني")
-                phone = st.text_input("رقم التواصل", value="966")
+                name = st.text_input("الاسم الكامل")
+                email = st.text_input("البريد الإلكتروني الرسمي")
+                phone = st.text_input("رقم الجوال الشخصي", value="966")
             with c2:
-                status = st.selectbox("الحالة العملية", ["على رأس العمل", "مجاز"])
-                region_obs = st.selectbox("المنطقة الإدارية", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
-                work = st.text_input("جهة الانتداب / العمل")
+                status = st.selectbox("الحالة الحالية", ["على رأس العمل", "في مهمة عمل", "مجاز"])
+                region_obs = st.selectbox("المنطقة الإدارية التابع لها", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
+                work = st.text_input("جهة الانتداب")
 
-            if st.form_submit_button("تسجيل المراقب"):
+            if st.form_submit_button("حفظ البيانات"):
                 if len(name) > 5 and "@" in email:
-                    add_observer({"name": name, "email": email, "status": status, "phone": phone, "work": work, "region": region_obs, "city": ""})
-                    st.success(f"تم تسجيل المراقب {name} في النظام.")
+                    add_observer({
+                        "name": name, "email": email, "status": status, 
+                        "phone": phone, "work": work, "region": region_obs, "city": ""
+                    })
+                    st.success(f"تمت إضافة المراقب {name} بنجاح.")
+                    st.rerun()
                 else:
-                    st.error("يرجى التحقق من صحة البيانات المدخلة.")
+                    st.error("يرجى التأكد من كتابة الاسم الكامل والبريد الإلكتروني بشكل صحيح.")
