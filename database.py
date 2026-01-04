@@ -7,10 +7,36 @@ def get_engine():
     return create_engine(db_url)
 
 def init_db():
-    # هذه الوظيفة ستحاول إنشاء الجداول إذا لم تكن موجودة
     engine = get_engine()
     with engine.connect() as conn:
-        conn.execute(text('CREATE TABLE IF NOT EXISTS observers ("#" SERIAL PRIMARY KEY, "الاسم" TEXT);'))
+        # إنشاء جدول الحملات مع عمود قائد الفريق
+        conn.execute(text('''
+            CREATE TABLE IF NOT EXISTS campaigns (
+                "م" SERIAL PRIMARY KEY,
+                "اليوم والتاريخ" TEXT,
+                "المنطقة" TEXT,
+                "المدينة" TEXT,
+                "اسم التجمع" TEXT,
+                "قائد الفريق" TEXT,
+                "عدد المنشآت بناءً على المسح الميداني" INTEGER,
+                "مأموري الضبط من وزارة التجارة" TEXT,
+                "موقع التجمع على الخرائط" TEXT,
+                "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        '''))
+        # إنشاء جدول المراقبين
+        conn.execute(text('''
+            CREATE TABLE IF NOT EXISTS observers (
+                "#" SERIAL PRIMARY KEY,
+                "الاسم" TEXT,
+                "الايميل" TEXT,
+                "حالة المراقب" TEXT,
+                "الجوال" TEXT,
+                "جهة العمل" TEXT,
+                "المنطقة" TEXT,
+                "المدينة" TEXT
+            );
+        '''))
         conn.commit()
 
 def add_campaign(data):
@@ -45,7 +71,6 @@ def get_observers():
     with engine.connect() as conn:
         return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
 
-# هذه الوظيفة هي المسؤولة عن إظهار القائمة في "إضافة حملة"
 def get_observers_names():
     engine = get_engine()
     try:
