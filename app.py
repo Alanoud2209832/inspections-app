@@ -26,24 +26,20 @@ if choice == "📊 الإحصائيات":
     st.dataframe(df_c.head(10), use_container_width=True)
 
 # --- صفحة إضافة حملة جديدة ---
-# --- جزء إضافة حملة جديدة المطور في app.py ---
-elif choice == "➕ إضافة حملة جديدة":
+# --- جزء إضافة حملة جديدة المطور في app.py ---elif choice == "➕ إضافة حملة جديدة":
     st.title("📝 إدخال بيانات حملة ميدانية")
     
-    # 1. اختيار المنطقة (خارج الفورم لضمان التحديث الفوري للأسماء)
-    region = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم", "الباحة", "الجوف"])
+    # اختيار المنطقة خارج الفورم لضمان التحديث الفوري للأسماء
+    region = st.selectbox("اختر المنطقة أولاً", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
     
-    # جلب المراقبين المفلترين بناءً على المنطقة المختارة
     from database import get_observers_by_region
     filtered_names = get_observers_by_region(region)
     
     if not filtered_names:
-        st.warning(f"⚠️ لا يوجد مراقبين مسجلين في منطقة {region}. يرجى إضافتهم من دليل المراقبين أولاً.")
+        st.warning(f"⚠️ لا يوجد مراقبين مسجلين في {region}. يرجى إضافتهم من دليل المراقبين.")
 
-    # 2. بداية النموذج لإدخال بقية البيانات
     with st.form("main_campaign_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
-        
         with col1:
             selected_date = st.date_input("اختر التاريخ")
             days_ar = {"Saturday": "السبت", "Sunday": "الأحد", "Monday": "الاثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة"}
@@ -54,32 +50,21 @@ elif choice == "➕ إضافة حملة جديدة":
             group_name = st.text_input("اسم التجمع")
             
         with col2:
-            # قائد الفريق
             leader = st.selectbox("قائد الفريق", options=filtered_names if filtered_names else ["لا يوجد مراقبين"])
-            
-            # المشاركين (Multi-select)
             participants = st.multiselect("تحديد المراقبين المشاركين", options=filtered_names)
             
             survey_count = st.number_input("عدد المنشآت", min_value=0, step=1)
-            inspectors = st.text_area("مأموري الضبط من جهات أخرى")
+            inspectors = st.text_area("مأموري الضبط المشاركين")
             map_link = st.text_input("رابط الخرائط")
         
-        submit_button = st.form_submit_button("حفظ الحملة الميدانية 💾")
-        
-        if submit_button:
+        if st.form_submit_button("حفظ الحملة الميدانية 💾"):
             if group_name and filtered_names and leader != "لا يوجد مراقبين":
-                participants_str = ", ".join(participants) if participants else "لا يوجد"
+                p_str = ", ".join(participants) if participants else "لا يوجد"
                 
                 campaign_data = {
-                    "day_date": str(full_date_str),
-                    "region": str(region), # نأخذ المنطقة المختارة من الأعلى
-                    "city": str(city),
-                    "group_name": str(group_name),
-                    "leader": str(leader),
-                    "participants": participants_str,
-                    "survey_count": int(survey_count),
-                    "inspectors": str(inspectors),
-                    "map_link": str(map_link)
+                    "day_date": full_date_str, "region": region, "city": city,
+                    "group_name": group_name, "leader": leader, "participants": p_str,
+                    "survey_count": int(survey_count), "inspectors": inspectors, "map_link": map_link
                 }
                 
                 try:
@@ -87,9 +72,9 @@ elif choice == "➕ إضافة حملة جديدة":
                     st.success(f"✅ تم حفظ حملة {group_name} بنجاح!")
                     st.balloons()
                 except Exception as e:
-                    st.error(f"❌ فشل الحفظ: {e}")
+                    st.error(f"❌ فشل الحفظ. تأكد من تحديث SQL في Neon. الخطأ: {e}")
             else:
-                st.error("⚠️ يرجى إدخال اسم التجمع والتأكد من وجود مراقبين في المنطقة.")
+                st.error("⚠️ يرجى تعبئة اسم التجمع والتأكد من وجود مراقبين.")
 
 # --- صفحة سجل الحملات ---
 elif choice == "📋 سجل الحملات":
