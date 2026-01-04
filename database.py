@@ -9,7 +9,7 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # 1. إنشاء جدول الحملات
+        # 1. جدول الحملات (محدث بالأعمدة الجديدة)
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
@@ -17,6 +17,8 @@ def init_db():
                 "المنطقة" TEXT,
                 "المدينة" TEXT,
                 "اسم التجمع" TEXT,
+                "قائد الفريق" TEXT,
+                "المراقبين المشاركين" TEXT,
                 "عدد المنشآت بناءً على المسح الميداني" INTEGER,
                 "مأموري الضبط من وزارة التجارة" TEXT,
                 "موقع التجمع على الخرائط" TEXT,
@@ -24,7 +26,7 @@ def init_db():
             );
         '''))
         
-        # 2. إنشاء جدول المراقبين
+        # 2. جدول المراقبين
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
@@ -38,11 +40,14 @@ def init_db():
             );
         '''))
         
-        # 3. محاولة إضافة عمود "قائد الفريق" (داخل دالة init_db لضمان التنفيذ)
+        # 3. تحديثات ذكية للأعمدة في حال كان الجدول قديماً
         try:
             conn.execute(text('ALTER TABLE campaigns ADD COLUMN "قائد الفريق" TEXT;'))
-        except Exception:
-            pass # إذا كان العمود موجوداً لن يفعل شيئاً
+        except Exception: pass
+        
+        try:
+            conn.execute(text('ALTER TABLE campaigns ADD COLUMN "المراقبين المشاركين" TEXT;'))
+        except Exception: pass
             
         conn.commit()
 
@@ -51,10 +56,10 @@ def add_campaign(data):
     with engine.connect() as conn:
         query = text('''
             INSERT INTO campaigns 
-            ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", 
+            ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
              "عدد المنشآت بناءً على المسح الميداني", "مأموري الضبط من وزارة التجارة", "موقع التجمع على الخرائط")
             VALUES 
-            (:day_date, :region, :city, :group_name, :leader, :survey_count, :inspectors, :map_link)
+            (:day_date, :region, :city, :group_name, :leader, :participants, :survey_count, :inspectors, :map_link)
         ''')
         conn.execute(query, data)
         conn.commit()
@@ -79,11 +84,13 @@ def get_observers():
     with engine.connect() as conn:
         return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
 
-def get_observers_names():
+# وظيفة جلب المراقبين بناءً على المنطقة المحددة
+def get_observers_by_region(region_name):
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            result = conn.execute(text('SELECT "الاسم" FROM observers ORDER BY "الاسم" ASC'))
+            query = text('SELECT "الاسم" FROM observers WHERE "المنطقة" = :reg ORDER BY "الاسم" ASC')
+            result = conn.execute(query, {"reg": region_name})
             return [row[0] for row in result]
-    except:
+    except Exception:
         return []
