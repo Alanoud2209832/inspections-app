@@ -28,8 +28,12 @@ if choice == "📊 الإحصائيات":
 elif choice == "➕ إضافة حملة جديدة":
     st.title("📝 إدخال بيانات حملة ميدانية")
     
-    # جلب أسماء المراقبين
+    # جلب الأسماء مباشرة من القاعدة
+    from database import get_observers_names
     names_list = get_observers_names()
+    
+    if not names_list:
+        st.warning("⚠️ لا توجد أسماء مراقبين في القاعدة. يرجى إضافة مراقب أولاً من صفحة 'دليل المراقبين'.")
     
     with st.form("main_campaign_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -39,24 +43,24 @@ elif choice == "➕ إضافة حملة جديدة":
             city = st.text_input("المدينة")
             group_name = st.text_input("اسم التجمع")
         with col2:
-            # حقل قائد الفريق - تأكدي من ظهور هذا الجزء
-            leader = st.selectbox("قائد الفريق", options=names_list if names_list else ["يجب إضافة مراقب أولاً"])
+            # حقل قائد الفريق
+            leader = st.selectbox("قائد الفريق", options=names_list)
             survey_count = st.number_input("عدد المنشآت", min_value=0, step=1)
             inspectors = st.text_area("مأموري الضبط المشاركين")
             map_link = st.text_input("رابط الخرائط")
         
         submit = st.form_submit_button("حفظ الحملة الميدانية 💾")
         if submit:
-            if group_name and leader not in ["يجب إضافة مراقب أولاً", "لا يوجد مراقبين مسجلين"]:
+            if group_name and leader:
                 add_campaign({
                     "day_date": day_date, "region": region, "city": city,
                     "group_name": group_name, "leader": leader,
                     "survey_count": survey_count, "inspectors": inspectors, "map_link": map_link
                 })
-                st.success(f"✅ تم حفظ حملة {group_name} بنجاح!")
+                st.success(f"✅ تم حفظ حملة {group_name} بقيادة {leader} بنجاح!")
                 st.balloons()
             else:
-                st.error("⚠️ خطأ: تأكدي من إدخال اسم التجمع واختيار قائد فريق صحيح.")
+                st.error("⚠️ يرجى التأكد من إدخال اسم التجمع واختيار قائد فريق.")
 
 # --- صفحة سجل الحملات ---
 elif choice == "📋 سجل الحملات":
