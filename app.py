@@ -26,7 +26,10 @@ if choice == "📊 الإحصائيات":
 # --- صفحة إضافة حملة جديدة ---
 elif choice == "➕ إضافة حملة جديدة":
     st.title("📝 إدخال بيانات حملة ميدانية")
-    list_of_observers = get_observers_names()
+    
+    # جلب الأسماء من ملف database
+    from database import get_observers_names
+    names_list = get_observers_names()
     
     with st.form("add_campaign_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -36,21 +39,23 @@ elif choice == "➕ إضافة حملة جديدة":
             city = st.text_input("المدينة")
             group_name = st.text_input("اسم التجمع")
         with col2:
-            leader = st.selectbox("قائد الفريق", options=list_of_observers if list_of_observers else ["لا يوجد مراقبين"])
+            # هنا يظهر حقل قائد الفريق
+            leader = st.selectbox("قائد الفريق (من المراقبين المسجلين)", options=names_list if names_list else ["لا يوجد مراقبين مسجلين"])
             survey_count = st.number_input("عدد المنشآت", min_value=0, step=1)
             inspectors = st.text_area("مأموري الضبط المشاركين")
             map_link = st.text_input("رابط الخرائط")
         
         if st.form_submit_button("حفظ الحملة 💾"):
-            if group_name and leader != "لا يوجد مراقبين":
+            if group_name and (names_list and leader != "لا يوجد مراقبين مسجلين"):
                 add_campaign({
                     "day_date": day_date, "region": region, "city": city,
                     "group_name": group_name, "leader": leader,
                     "survey_count": survey_count, "inspectors": inspectors, "map_link": map_link
                 })
-                st.success(f"✅ تم حفظ حملة {group_name} بنجاح!")
+                st.success(f"✅ تم حفظ حملة {group_name} بقيادة {leader}")
+                st.balloons()
             else:
-                st.error("⚠️ يرجى التأكد من إدخال اسم التجمع ووجود قائد فريق مسجل.")
+                st.error("⚠️ يرجى إدخال اسم التجمع والتأكد من وجود مراقبين مسجلين في النظام.")
 
 # --- صفحة سجل الحملات ---
 elif choice == "📋 سجل الحملات":
