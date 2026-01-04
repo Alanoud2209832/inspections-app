@@ -1,5 +1,5 @@
 import streamlit as st
-from database import init_db, add_campaign, get_campaigns, get_observers, add_observer
+from database import init_db, add_campaign, get_campaigns, get_observers, add_observer, get_observers_names
 import pandas as pd
 
 st.set_page_config(page_title="نظام الرقابة الذكي", layout="wide", page_icon="🛡️")
@@ -10,8 +10,56 @@ st.sidebar.title("🛠️ القائمة الرئيسية")
 menu = ["📊 الإحصائيات", "➕ إضافة حملة جديدة", "📋 سجل الحملات", "👥 دليل المراقبين"]
 choice = st.sidebar.radio("انتقل إلى:", menu)
 
+# --- صفحة الإحصائيات ---
+if choice == "📊 الإحصائيات":
+    st.title("📈 لوحة مؤشرات النظام")
+    df_c = get_campaigns()
+    df_o = get_observers()
+    col1, col2, col3 = st.columns(3)
+    col1.metric("إجمالي الحملات", len(df_c))
+    col2.metric("عدد المراقبين", len(df_o))
+    col3.metric("حالة القاعدة", "Neon Online ✅")
+    st.divider()
+    st.subheader("أحدث النشاطات")
+    st.dataframe(df_c.head(5), use_container_width=True)
+
+# --- صفحة إضافة حملة جديدة ---
+elif choice == "➕ إضافة حملة جديدة":
+    st.title("📝 إدخال بيانات حملة ميدانية")
+    list_of_observers = get_observers_names()
+    
+    with st.form("add_campaign_form", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            day_date = st.text_input("اليوم والتاريخ")
+            region = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
+            city = st.text_input("المدينة")
+            group_name = st.text_input("اسم التجمع")
+        with col2:
+            leader = st.selectbox("قائد الفريق", options=list_of_observers if list_of_observers else ["لا يوجد مراقبين"])
+            survey_count = st.number_input("عدد المنشآت", min_value=0, step=1)
+            inspectors = st.text_area("مأموري الضبط المشاركين")
+            map_link = st.text_input("رابط الخرائط")
+        
+        if st.form_submit_button("حفظ الحملة 💾"):
+            if group_name and leader != "لا يوجد مراقبين":
+                add_campaign({
+                    "day_date": day_date, "region": region, "city": city,
+                    "group_name": group_name, "leader": leader,
+                    "survey_count": survey_count, "inspectors": inspectors, "map_link": map_link
+                })
+                st.success(f"✅ تم حفظ حملة {group_name} بنجاح!")
+            else:
+                st.error("⚠️ يرجى التأكد من إدخال اسم التجمع ووجود قائد فريق مسجل.")
+
+# --- صفحة سجل الحملات ---
+elif choice == "📋 سجل الحملات":
+    st.title("🗂️ سجل الجولات الميدانية")
+    df = get_campaigns()
+    st.dataframe(df, use_container_width=True)
+
 # --- صفحة دليل المراقبين ---
-if choice == "👥 دليل المراقبين":
+elif choice == "👥 دليل المراقبين":
     st.title("👨‍✈️ إدارة المراقبين")
     tab1, tab2 = st.tabs(["📋 عرض القائمة", "➕ إضافة مراقب جديد"])
     
@@ -34,38 +82,22 @@ if choice == "👥 دليل المراقبين":
                     "وزارة البيئة والمياه والزراعة",
                     "وزارة الموارد البشرية والتنمية الاجتماعية"
                 ])
-                region = st.selectbox("المنطقة ", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
+                region = st.selectbox("المنطقة ", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "الباحة", "تبوك", "القصيم", "حائل", "الجوف", "الحدود الشمالية", "نجران", "جازان"])
                 city = st.text_input("المدينة")
             
             if st.form_submit_button("حفظ المراقب 💾"):
-                # --- الفلاتر والشروط (المنطق الذي يمنع كلمة test) ---
-                
-                # 1. فحص الاسم
                 if len(name) < 3 or name.lower() == "test":
-                    st.error("❌ يرجى إدخال اسم حقيقي وليس 'test'.")
-                
-                # 2. فحص الإيميل
+                    st.error("❌ يرجى إدخال اسم حقيقي.")
                 elif "@" not in email or "." not in email:
-                    st.error("❌ صيغة الإيميل غير صحيحة (يجب أن يحتوي على @ ونقطة).")
-                
-                # 3. فحص الجوال (بداية بـ 966 وطول 12 رقم)
+                    st.error("❌ صيغة الإيميل غير صحيحة.")
                 elif not phone_input.startswith("966") or len(phone_input) != 12:
-                    st.error("❌ رقم الجوال يجب أن يبدأ بـ 966 ويتكون من 12 رقماً إجمالاً.")
-                
-                # 4. فحص المدينة
-                elif city.lower() == "test" or len(city) < 2:
+                    st.error("❌ رقم الجوال يجب أن يبدأ بـ 966 ويتكون من 12 رقماً.")
+                elif city.lower() == "test":
                     st.error("❌ يرجى إدخال اسم مدينة صحيح.")
-                
                 else:
-                    # إذا نجحت كل الشروط يتم الحفظ
                     add_observer({
-                        "name": name, 
-                        "email": email, 
-                        "status": status, 
-                        "phone": phone_input, 
-                        "work": work, 
-                        "region": region, 
-                        "city": city
+                        "name": name, "email": email, "status": status, 
+                        "phone": phone_input, "work": work, "region": region, "city": city
                     })
                     st.success(f"✅ تمت إضافة {name} بنجاح!")
                     st.balloons()
