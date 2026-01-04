@@ -29,36 +29,52 @@ if choice == "📊 الإحصائيات":
 elif choice == "➕ إضافة حملة جديدة":
     st.title("📝 إدخال بيانات حملة ميدانية")
     
-    # جلب الأسماء مباشرة من القاعدة
     from database import get_observers_names
     names_list = get_observers_names()
-    
-    if not names_list:
-        st.warning("⚠️ لا توجد أسماء مراقبين في القاعدة. يرجى إضافة مراقب أولاً من صفحة 'دليل المراقبين'.")
     
     with st.form("main_campaign_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            day_date = st.text_input("اليوم والتاريخ")
+            # استخدام حقل التاريخ (التقويم)
+            selected_date = st.date_input("اختر التاريخ", help="اختر التاريخ من التقويم")
+            
+            # تحديد اسم اليوم تلقائياً بناءً على التاريخ المختار
+            days_ar = {
+                "Saturday": "السبت", "Sunday": "الأحد", "Monday": "الاثنين",
+                "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة"
+            }
+            day_name_en = selected_date.strftime("%A")
+            day_name_ar = days_ar.get(day_name_en, day_name_en)
+            
+            # دمج اليوم والتاريخ في نص واحد لحفظه في القاعدة
+            full_date_str = f"{day_name_ar} {selected_date.strftime('%Y-%m-%d')}"
+            
+            # حقل نصي يظهر لك النتيجة النهائية (للقراءة فقط)
+            st.write(f"التاريخ المختار: **{full_date_str}**")
+            
             region = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
             city = st.text_input("المدينة")
             group_name = st.text_input("اسم التجمع")
+            
         with col2:
-            # حقل قائد الفريق
-            leader = st.selectbox("قائد الفريق", options=names_list)
+            leader = st.selectbox("قائد الفريق", options=names_list if names_list else ["يجب إضافة مراقب أولاً"])
             survey_count = st.number_input("عدد المنشآت", min_value=0, step=1)
             inspectors = st.text_area("مأموري الضبط المشاركين")
             map_link = st.text_input("رابط الخرائط")
         
-        submit = st.form_submit_button("حفظ الحملة الميدانية 💾")
-        if submit:
-            if group_name and leader:
+        if st.form_submit_button("حفظ الحملة الميدانية 💾"):
+            if group_name and leader not in ["يجب إضافة مراقب أولاً"]:
                 add_campaign({
-                    "day_date": day_date, "region": region, "city": city,
-                    "group_name": group_name, "leader": leader,
-                    "survey_count": survey_count, "inspectors": inspectors, "map_link": map_link
+                    "day_date": full_date_str, # نرسل النص المدمج (اليوم + التاريخ)
+                    "region": region, 
+                    "city": city,
+                    "group_name": group_name, 
+                    "leader": leader,
+                    "survey_count": survey_count, 
+                    "inspectors": inspectors, 
+                    "map_link": map_link
                 })
-                st.success(f"✅ تم حفظ حملة {group_name} بقيادة {leader} بنجاح!")
+                st.success(f"✅ تم حفظ حملة {group_name} بنجاح!")
                 st.balloons()
             else:
                 st.error("⚠️ يرجى التأكد من إدخال اسم التجمع واختيار قائد فريق.")
