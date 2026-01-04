@@ -52,7 +52,7 @@ if choice == "الرئيسية والإحصائيات":
 elif choice == "إضافة حملة جديدة":
     st.header("نموذج تسجيل حملة ميدانية")
     
-    # اختيار المنطقة (خارج النموذج لضمان التحديث اللحظي للبيانات)
+    # اختيار المنطقة
     region = st.selectbox("المنطقة الإدارية للعمل:", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
     
     from database import get_observers_by_region
@@ -86,7 +86,6 @@ elif choice == "إضافة حملة جديدة":
             inspectors = st.text_area("مأموري الضبط المشاركين من الجهات الحكومية الأخرى")
             map_link = st.text_input("رابط الموقع الجغرافي (Google Maps)")
             
-            # زر الحفظ الرسمي
             submitted = st.form_submit_button("اعتماد وحفظ بيانات الحملة")
             
             if submitted:
@@ -110,11 +109,12 @@ elif choice == "سجل الحملات":
     st.header("سجل الجولات الرقابية المعتمدة")
     df = get_campaigns()
     
-    # محرك بحث بسيط
-    search_query = st.text_input("البحث السريع (حسب اسم التجمع أو قائد الفريق):")
+    # محرك البحث المحدث (المنطقة والمدينة)
+    search_query = st.text_input("البحث السريع (حسب المنطقة أو المدينة):")
     if search_query:
-        df = df[df['اسم التجمع'].str.contains(search_query, na=False) | 
-                df['قائد الفريق'].str.contains(search_query, na=False)]
+        # البحث في عمود المنطقة وعمود المدينة
+        df = df[df['المنطقة'].str.contains(search_query, na=False) | 
+                df['المدينة'].str.contains(search_query, na=False)]
         
     st.dataframe(df, use_container_width=True)
 
@@ -138,7 +138,12 @@ elif choice == "دليل المراقبين":
             with c2:
                 status = st.selectbox("الحالة الحالية", ["على رأس العمل", "في مهمة عمل", "مجاز"])
                 region_obs = st.selectbox("المنطقة الإدارية التابع لها", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
-                work = st.text_input("جهة الانتداب")
+                # تعديل حقل جهة العمل إلى قائمة خيارات
+                work = st.selectbox("جهة العمل", [
+                    "وزارة البيئة والمياه والزراعة", 
+                    "وزارة الموارد البشرية والتنمية الاجتماعية", 
+                    "هيئة الزكاة والضريبة والجمارك"
+                ])
 
             if st.form_submit_button("حفظ البيانات"):
                 if len(name) > 5 and "@" in email:
