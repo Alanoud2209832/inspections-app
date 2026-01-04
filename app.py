@@ -31,10 +31,11 @@ elif choice == "➕ إضافة حملة جديدة":
     from database import get_observers_names
     names_list = get_observers_names()
     
+    # تأكدي أن كل الحقول والزر تحت هذا السطر (مُزاحة للداخل)
     with st.form("main_campaign_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
+        
         with col1:
-            # حقل التقويم
             selected_date = st.date_input("اختر التاريخ")
             days_ar = {"Saturday": "السبت", "Sunday": "الأحد", "Monday": "الاثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة"}
             day_name_ar = days_ar.get(selected_date.strftime("%A"), selected_date.strftime("%A"))
@@ -46,19 +47,22 @@ elif choice == "➕ إضافة حملة جديدة":
             
         with col2:
             leader = st.selectbox("قائد الفريق", options=names_list if names_list else ["لا يوجد مراقبين مسجلين"])
-            survey_count = st.number_input("عدد المنشآت بناءً على المسح الميداني", min_value=0, step=1)
+            survey_count = st.number_input("عدد المنشآت", min_value=0, step=1)
             inspectors = st.text_area("مأموري الضبط المشاركين")
             map_link = st.text_input("رابط الخرائط")
-if st.form_submit_button("حفظ الحملة الميدانية 💾"):
+        
+        # الزر يجب أن يكون مُزاحاً للداخل ليكون تابعاً لـ st.form
+        submit_button = st.form_submit_button("حفظ الحملة الميدانية 💾")
+        
+        if submit_button:
             if group_name and leader != "لا يوجد مراقبين مسجلين":
-                # تجهيز القاموس بمفاتيح مطابقة تماماً لما في database.py
                 campaign_data = {
                     "day_date": str(full_date_str),
                     "region": str(region),
                     "city": str(city),
                     "group_name": str(group_name),
                     "leader": str(leader),
-                    "survey_count": int(survey_count), # تحويل صريح لرقم
+                    "survey_count": int(survey_count),
                     "inspectors": str(inspectors),
                     "map_link": str(map_link)
                 }
@@ -68,7 +72,7 @@ if st.form_submit_button("حفظ الحملة الميدانية 💾"):
                     st.success(f"✅ تم حفظ حملة {group_name} بنجاح!")
                     st.balloons()
                 except Exception as e:
-                    st.error(f"❌ فشل الحفظ في قاعدة البيانات. الخطأ: {e}")
+                    st.error(f"❌ فشل الحفظ. تأكد من تحديث الجدول في Neon. الخطأ: {e}")
             else:
                 st.error("⚠️ يرجى إدخال اسم التجمع واختيار قائد الفريق.")
 
