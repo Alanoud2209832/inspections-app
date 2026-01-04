@@ -31,7 +31,7 @@ menu = ["الرئيسية", "إضافة حملة جديدة", "سجل الحمل
 choice = st.sidebar.selectbox("القائمة :", menu)
 
 # --- الصفحة الرئيسية ---
-if choice == "الرئيسية والإحصائيات":
+if choice == "الرئيسية ":
     st.header("لوحة المؤشرات العامة")
     df_c = get_campaigns()
     df_o = get_observers()
