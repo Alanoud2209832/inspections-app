@@ -9,7 +9,6 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # 1. جدول الحملات (محدث بالأعمدة الجديدة)
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
@@ -25,30 +24,12 @@ def init_db():
                 "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         '''))
-        
-        # 2. جدول المراقبين
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
-                "#" SERIAL PRIMARY KEY,
-                "الاسم" TEXT,
-                "الايميل" TEXT,
-                "حالة المراقب" TEXT,
-                "الجوال" TEXT,
-                "جهة العمل" TEXT,
-                "المنطقة" TEXT,
-                "المدينة" TEXT
+                "#" SERIAL PRIMARY KEY, "الاسم" TEXT, "الايميل" TEXT, "حالة المراقب" TEXT,
+                "الجوال" TEXT, "جهة العمل" TEXT, "المنطقة" TEXT, "المدينة" TEXT
             );
         '''))
-        
-        # 3. تحديثات ذكية للأعمدة في حال كان الجدول قديماً
-        try:
-            conn.execute(text('ALTER TABLE campaigns ADD COLUMN "قائد الفريق" TEXT;'))
-        except Exception: pass
-        
-        try:
-            conn.execute(text('ALTER TABLE campaigns ADD COLUMN "المراقبين المشاركين" TEXT;'))
-        except Exception: pass
-            
         conn.commit()
 
 def add_campaign(data):
@@ -84,7 +65,6 @@ def get_observers():
     with engine.connect() as conn:
         return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
 
-# وظيفة جلب المراقبين بناءً على المنطقة المحددة
 def get_observers_by_region(region_name):
     engine = get_engine()
     try:
@@ -92,5 +72,5 @@ def get_observers_by_region(region_name):
             query = text('SELECT "الاسم" FROM observers WHERE "المنطقة" = :reg ORDER BY "الاسم" ASC')
             result = conn.execute(query, {"reg": region_name})
             return [row[0] for row in result]
-    except Exception:
+    except:
         return []
