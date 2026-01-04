@@ -9,7 +9,6 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # إنشاء جدول الحملات مع عمود قائد الفريق
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
@@ -24,7 +23,6 @@ def init_db():
                 "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         '''))
-        # إنشاء جدول المراقبين
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
@@ -42,11 +40,13 @@ def init_db():
 def add_campaign(data):
     engine = get_engine()
     with engine.connect() as conn:
+        # تأكدي أن الأسماء هنا تطابق أسماء الأعمدة في Neon بالضبط
         query = text('''
             INSERT INTO campaigns 
-            ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق",
+            ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", 
              "عدد المنشآت بناءً على المسح الميداني", "مأموري الضبط من وزارة التجارة", "موقع التجمع على الخرائط")
-            VALUES (:day_date, :region, :city, :group_name, :leader, :survey_count, :inspectors, :map_link)
+            VALUES 
+            (:day_date, :region, :city, :group_name, :leader, :survey_count, :inspectors, :map_link)
         ''')
         conn.execute(query, data)
         conn.commit()
@@ -73,12 +73,9 @@ def get_observers():
 
 def get_observers_names():
     engine = get_engine()
-    # استخدام سياق الاتصال المباشر لضمان جلب أحدث البيانات
     try:
         with engine.connect() as conn:
             result = conn.execute(text('SELECT "الاسم" FROM observers ORDER BY "الاسم" ASC'))
-            names = [row[0] for row in result]
-            return names
-    except Exception as e:
-        st.error(f"خطأ في جلب الأسماء: {e}")
+            return [row[0] for row in result]
+    except:
         return []
