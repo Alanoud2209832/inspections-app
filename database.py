@@ -2,16 +2,16 @@ import streamlit as st
 from sqlalchemy import create_engine, text
 import pandas as pd
 
-# وظيفة الاتصال بمحرك قاعدة البيانات
+# وظيفة الاتصال
 def get_engine():
     db_url = st.secrets["connections"]["postgresql"]["url"]
     return create_engine(db_url)
 
-# تهيئة الجداول (تُنفذ تلقائياً)
+# تهيئة الجداول
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # جدول الحملات
+        # جدول الحملات (أضفنا عمود قائد الفريق)
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
@@ -19,6 +19,7 @@ def init_db():
                 "المنطقة" TEXT,
                 "المدينة" TEXT,
                 "اسم التجمع" TEXT,
+                "قائد الفريق" TEXT,
                 "عدد المنشآت بناءً على المسح الميداني" INTEGER,
                 "مأموري الضبط من وزارة التجارة" TEXT,
                 "موقع التجمع على الخرائط" TEXT,
@@ -40,41 +41,26 @@ def init_db():
         '''))
         conn.commit()
 
-# تحديث وظيفة إضافة الحملة لتشمل قائد الفريق
+# وظائف الحملات
 def add_campaign(data):
     engine = get_engine()
     with engine.connect() as conn:
         query = text('''
             INSERT INTO campaigns 
-            ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", 
+            ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق",
              "عدد المنشآت بناءً على المسح الميداني", "مأموري الضبط من وزارة التجارة", 
-             "موقع التجمع على الخرائط", "قائد الفريق")
-            VALUES (:day_date, :region, :city, :group_name, :survey_count, :inspectors, :map_link, :leader)
+             "موقع التجمع على الخرائط")
+            VALUES (:day_date, :region, :city, :group_name, :leader, :survey_count, :inspectors, :map_link)
         ''')
         conn.execute(query, data)
         conn.commit()
 
-# وظيفة بسيطة لجلب قائمة الأسماء فقط من جدول المراقبين
-def get_observers_names():
-    engine = get_engine()
-    with engine.connect() as conn:
-        df = pd.read_sql('SELECT "الاسم" FROM observers ORDER BY "الاسم" ASC', conn)
-        return df["الاسم"].tolist()
-
 def get_campaigns():
     engine = get_engine()
     with engine.connect() as conn:
-        return pd.read_sql("SELECT * FROM campaigns ORDER BY م DESC", conn)
+        return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
 
-# وظائف جدول المراقبين
-def get_observers():
-    engine = get_engine()
-    with engine.connect() as conn:
-        # جلب البيانات بدون اشتراط ترتيب معين لتجنب خطأ الرمز #
-        return pd.read_sql("SELECT * FROM observers", conn)
-
-
-# وظيفة إضافة مراقب جديد
+# وظائف المراقبين
 def add_observer(data):
     engine = get_engine()
     with engine.connect() as conn:
@@ -84,3 +70,14 @@ def add_observer(data):
         ''')
         conn.execute(query, data)
         conn.commit()
+
+def get_observers():
+    engine = get_engine()
+    with engine.connect() as conn:
+        return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
+
+def get_observers_names():
+    engine = get_engine()
+    with engine.connect() as conn:
+        df = pd.read_sql('SELECT "الاسم" FROM observers ORDER BY "الاسم" ASC', conn)
+        return df["الاسم"].tolist()
