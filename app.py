@@ -2,7 +2,7 @@ import streamlit as st
 from database import init_db, add_campaign, get_campaigns, get_observers, add_observer, get_observers_names
 import pandas as pd
 
-st.set_page_config(page_title="نظام الرقابة الذكي", layout="wide", page_icon="🛡️")
+st.set_page_config(page_title="نظام الحملات الرقابية", layout="wide", page_icon="🛡️")
 
 # تهيئة الجداول
 init_db()
