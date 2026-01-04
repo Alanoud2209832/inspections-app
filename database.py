@@ -73,9 +73,12 @@ def get_observers():
 
 def get_observers_names():
     engine = get_engine()
+    # استخدام سياق الاتصال المباشر لضمان جلب أحدث البيانات
     try:
         with engine.connect() as conn:
-            df = pd.read_sql('SELECT "الاسم" FROM observers ORDER BY "الاسم" ASC', conn)
-            return df["الاسم"].tolist()
-    except:
+            result = conn.execute(text('SELECT "الاسم" FROM observers ORDER BY "الاسم" ASC'))
+            names = [row[0] for row in result]
+            return names
+    except Exception as e:
+        st.error(f"خطأ في جلب الأسماء: {e}")
         return []
