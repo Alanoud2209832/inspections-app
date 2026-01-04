@@ -26,8 +26,14 @@ def init_db():
         '''))
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
-                "#" SERIAL PRIMARY KEY, "الاسم" TEXT, "الايميل" TEXT, "حالة المراقب" TEXT,
-                "الجوال" TEXT, "جهة العمل" TEXT, "المنطقة" TEXT, "المدينة" TEXT
+                "#" SERIAL PRIMARY KEY,
+                "الاسم" TEXT,
+                "الايميل" TEXT,
+                "حالة المراقب" TEXT,
+                "الجوال" TEXT,
+                "جهة العمل" TEXT,
+                "المنطقة" TEXT,
+                "المدينة" TEXT
             );
         '''))
         conn.commit()
