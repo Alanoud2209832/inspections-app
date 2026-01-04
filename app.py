@@ -49,23 +49,26 @@ elif choice == "➕ إضافة حملة جديدة":
             survey_count = st.number_input("عدد المنشآت بناءً على المسح الميداني", min_value=0, step=1)
             inspectors = st.text_area("مأموري الضبط المشاركين")
             map_link = st.text_input("رابط الخرائط")
-        
-        if st.form_submit_button("حفظ الحملة الميدانية 💾"):
+if st.form_submit_button("حفظ الحملة الميدانية 💾"):
             if group_name and leader != "لا يوجد مراقبين مسجلين":
-                # البيانات المرسلة للـ database.py
+                # تجهيز القاموس بمفاتيح مطابقة تماماً لما في database.py
                 campaign_data = {
-                    "day_date": full_date_str,
-                    "region": region,
-                    "city": city,
-                    "group_name": group_name,
-                    "leader": leader,
-                    "survey_count": int(survey_count),
-                    "inspectors": inspectors,
-                    "map_link": map_link
+                    "day_date": str(full_date_str),
+                    "region": str(region),
+                    "city": str(city),
+                    "group_name": str(group_name),
+                    "leader": str(leader),
+                    "survey_count": int(survey_count), # تحويل صريح لرقم
+                    "inspectors": str(inspectors),
+                    "map_link": str(map_link)
                 }
-                add_campaign(campaign_data)
-                st.success(f"✅ تم حفظ حملة {group_name} بنجاح!")
-                st.balloons()
+                
+                try:
+                    add_campaign(campaign_data)
+                    st.success(f"✅ تم حفظ حملة {group_name} بنجاح!")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"❌ فشل الحفظ في قاعدة البيانات. الخطأ: {e}")
             else:
                 st.error("⚠️ يرجى إدخال اسم التجمع واختيار قائد الفريق.")
 
