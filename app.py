@@ -26,9 +26,9 @@ st.markdown("""
 init_db()
 
 # القائمة الجانبية
-st.sidebar.title("نظام الإدارة الميدانية")
-menu = ["الرئيسية والإحصائيات", "إضافة حملة جديدة", "سجل الحملات", "دليل المراقبين"]
-choice = st.sidebar.selectbox("القائمة الإجرائية:", menu)
+st.sidebar.title("نظام الإدارة الرقابية")
+menu = ["الرئيسية", "إضافة حملة جديدة", "سجل الحملات", "دليل المراقبين"]
+choice = st.sidebar.selectbox("القائمة :", menu)
 
 # --- الصفحة الرئيسية ---
 if choice == "الرئيسية والإحصائيات":
@@ -50,7 +50,7 @@ if choice == "الرئيسية والإحصائيات":
 
 # --- صفحة إضافة حملة جديدة ---
 elif choice == "إضافة حملة جديدة":
-    st.header("نموذج تسجيل حملة ميدانية")
+    st.header("نموذج تسجيل حملة رقابية")
     
     # اختيار المنطقة
     region = st.selectbox("المنطقة الإدارية للعمل:", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
@@ -78,13 +78,13 @@ elif choice == "إضافة حملة جديدة":
                 group_name = st.text_input("اسم التجمع المستهدف")
             
             with col2:
-                leader = st.selectbox("قائد الفريق الميداني:", options=filtered_names if filtered_names else ["لا يوجد أسماء"])
+                leader = st.selectbox("قائد الفريق :", options=filtered_names if filtered_names else ["لا يوجد أسماء"])
                 participants = st.multiselect("المراقبين المشاركين:", options=filtered_names)
                 survey_count = st.number_input("إجمالي المنشآت (المسح الميداني)", min_value=0, step=1)
             
             st.markdown("---")
-            inspectors = st.text_area("مأموري الضبط المشاركين من الجهات الحكومية الأخرى")
-            map_link = st.text_input("رابط الموقع الجغرافي (Google Maps)")
+            inspectors = st.text_area("مأموري الضبط المشاركين من وزارة التجارة")
+            map_link = st.text_input(" الموقع الجغرافي (Google Maps)")
             
             submitted = st.form_submit_button("اعتماد وحفظ بيانات الحملة")
             
@@ -106,7 +106,7 @@ elif choice == "إضافة حملة جديدة":
 
 # --- صفحة سجل الحملات ---
 elif choice == "سجل الحملات":
-    st.header("سجل الجولات الرقابية المعتمدة")
+    st.header("سجل الجولات الرقابية ")
     df = get_campaigns()
     
     # محرك البحث المحدث (المنطقة والمدينة)
@@ -122,7 +122,7 @@ elif choice == "سجل الحملات":
 elif choice == "دليل المراقبين":
     st.header("إدارة بيانات المراقبين")
     
-    tab1, tab2 = st.tabs(["قائمة الموظفين", "إضافة ملف مراقب"])
+    tab1, tab2 = st.tabs(["قائمة المراقبين", "إضافة مراقب"])
     
     with tab1:
         st.dataframe(get_observers(), use_container_width=True)
@@ -133,8 +133,8 @@ elif choice == "دليل المراقبين":
             c1, c2 = st.columns(2)
             with c1:
                 name = st.text_input("الاسم الكامل")
-                email = st.text_input("البريد الإلكتروني الرسمي")
-                phone = st.text_input("رقم الجوال الشخصي", value="966")
+                email = st.text_input("البريد الإلكتروني ")
+                phone = st.text_input("رقم الجوال ", value="966")
             with c2:
                 status = st.selectbox("الحالة الحالية", ["على رأس العمل", "في مهمة عمل", "مجاز"])
                 region_obs = st.selectbox("المنطقة الإدارية التابع لها", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
