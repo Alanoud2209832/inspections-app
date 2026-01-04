@@ -9,6 +9,7 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
+        # 1. إنشاء جدول الحملات
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
@@ -16,13 +17,14 @@ def init_db():
                 "المنطقة" TEXT,
                 "المدينة" TEXT,
                 "اسم التجمع" TEXT,
-                "قائد الفريق" TEXT,
                 "عدد المنشآت بناءً على المسح الميداني" INTEGER,
                 "مأموري الضبط من وزارة التجارة" TEXT,
                 "موقع التجمع على الخرائط" TEXT,
                 "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         '''))
+        
+        # 2. إنشاء جدول المراقبين
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
@@ -35,12 +37,18 @@ def init_db():
                 "المدينة" TEXT
             );
         '''))
+        
+        # 3. محاولة إضافة عمود "قائد الفريق" (داخل دالة init_db لضمان التنفيذ)
+        try:
+            conn.execute(text('ALTER TABLE campaigns ADD COLUMN "قائد الفريق" TEXT;'))
+        except Exception:
+            pass # إذا كان العمود موجوداً لن يفعل شيئاً
+            
         conn.commit()
 
 def add_campaign(data):
     engine = get_engine()
     with engine.connect() as conn:
-        # تأكدي من ترتيب الأعمدة ومطابقتها لجدول Neon
         query = text('''
             INSERT INTO campaigns 
             ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", 
@@ -50,7 +58,6 @@ def add_campaign(data):
         ''')
         conn.execute(query, data)
         conn.commit()
-        
 
 def get_campaigns():
     engine = get_engine()
