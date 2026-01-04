@@ -23,7 +23,8 @@ if choice == "📊 الإحصائيات":
     st.divider()
     st.subheader("أحدث النشاطات")
     st.dataframe(df_c.head(5), use_container_width=True)
-
+    db_url = st.secrets["connections"]["postgresql"]["url"]
+    st.info(f"🔗 متصل حالياً بقاعدة البيانات: {db_url.split('@')[-1].split('/')[0]}")
 # --- صفحة إضافة حملة جديدة ---
 elif choice == "➕ إضافة حملة جديدة":
     st.title("📝 إدخال بيانات حملة ميدانية")
