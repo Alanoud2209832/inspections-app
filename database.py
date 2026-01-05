@@ -54,6 +54,7 @@ def اضافة_حملة(بيانات):
         conn.execute(استعلام, بيانات)
         conn.commit()
 
+# استبدلي الدالة الموجودة في database.py بهذه النسخة المحسنة
 def جلب_مراقبين_بالجهة(المنطقة, الجهات):
     if not الجهات:
         return []
@@ -61,21 +62,27 @@ def جلب_مراقبين_بالجهة(المنطقة, الجهات):
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            # نستخدم IN مع تحويل القائمة لضمان التوافق مع SQL
-            استعلام = text('''
-                SELECT "الاسم" FROM observers 
-                WHERE "المنطقة" = :reg 
-                AND "جهة العمل" IN :works
-                ORDER BY "الاسم" ASC
-            ''')
-            # تحويل القائمة إلى tuple وهو التنسيق الذي يفهمه محرك PostgreSQL
-            result = conn.execute(استعلام, {"reg": المنطقة, "works": tuple(الجهات)})
-            names = [row[0] for row in result]
-            return names
+            # نستخدم tuple لتحويل القائمة لتنسيق يفهمه SQL
+            works_tuple = tuple(الجهات)
+            
+            # معالجة حالة الاختيار الواحد (بايثون تضع فاصلة زائدة تفسد الاستعلام)
+            if len(الجهات) == 1:
+                استعلام = text('''
+                    SELECT "الاسم" FROM observers 
+                    WHERE "المنطقة" = :reg AND "جهة العمل" = :work
+                ''')
+                params = {"reg": المنطقة, "work": الجهات[0]}
+            else:
+                استعلام = text('''
+                    SELECT "الاسم" FROM observers 
+                    WHERE "المنطقة" = :reg AND "جهة العمل" IN :works
+                ''')
+                params = {"reg": المنطقة, "works": works_tuple}
+            
+            result = conn.execute(استعلام, params)
+            return [row[0] for row in result]
     except Exception as e:
-        st.error(f"حدث خطأ أثناء جلب الأسماء: {e}")
         return []
-
 def جلب_الحملات():
     engine = get_engine()
     with engine.connect() as conn:
