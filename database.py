@@ -56,6 +56,19 @@ def get_campaigns():
     with engine.connect() as conn:
         return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
 
+# وظيفة جديدة لجلب حملات مراقب محدد
+def get_campaigns_for_observer(observer_name):
+    engine = get_engine()
+    with engine.connect() as conn:
+        # البحث عن الاسم في خانة القائد أو ضمن خانة المشاركين
+        query = text('''
+            SELECT * FROM campaigns 
+            WHERE "قائد الفريق" = :name 
+            OR "المراقبين المشاركين" LIKE :name_like
+            ORDER BY "م" DESC
+        ''')
+        return pd.read_sql(query, conn, params={"name": observer_name, "name_like": f'%{observer_name}%'})
+
 def add_observer(data):
     engine = get_engine()
     with engine.connect() as conn:
@@ -80,3 +93,11 @@ def get_observers_by_region(region_name):
             return [row[0] for row in result]
     except:
         return []
+
+# وظيفة للتحقق من بيانات الدخول
+def check_observer_login(phone):
+    engine = get_engine()
+    with engine.connect() as conn:
+        query = text('SELECT "الاسم" FROM observers WHERE "الجوال" = :phone LIMIT 1')
+        result = conn.execute(query, {"phone": phone}).fetchone()
+        return result[0] if result else None
