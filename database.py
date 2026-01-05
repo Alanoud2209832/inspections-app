@@ -1,21 +1,18 @@
-
 import streamlit as st
 from sqlalchemy import create_engine, text
 import pandas as pd
 
 def get_engine():
     db_url = st.secrets["connections"]["postgresql"]["url"]
-    
-    # تصحيح الرابط إذا كان يبدأ بـ postgres:// ليصبح postgresql://
+    # تصحيح الرابط تلقائياً إذا لزم الأمر
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
-        
     return create_engine(db_url, pool_pre_ping=True)
 
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # 1. إنشاء جدول الحملات
+        # جدول الحملات
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
@@ -32,8 +29,7 @@ def init_db():
                 "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         '''))
-        
-        # 2. إنشاء جدول المراقبين
+        # جدول المراقبين مع حقل الجوال
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
@@ -66,29 +62,27 @@ def جلب_مراقبين_بالجهة(المنطقة, الجهات):
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            # تحويل القائمة إلى tuple للبحث بـ IN
             استعلام = text('''
                 SELECT "الاسم" FROM observers 
                 WHERE "المنطقة" = :reg AND "جهة العمل" IN :works
-                ORDER BY "الاسم" ASC
             ''')
             result = conn.execute(استعلام, {"reg": المنطقة, "works": tuple(الجهات)})
             return [row[0] for row in result]
-    except Exception as e:
+    except:
         return []
 
 def جلب_الحملات():
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
+            df = pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
+            return df
     except:
         return pd.DataFrame()
 
 def اضافة_مراقب(بيانات):
     engine = get_engine()
     with engine.connect() as conn:
-        # تأكدي من وجود حقل "الجوال" هنا
         استعلام = text('''
             INSERT INTO observers ("الاسم", "الايميل", "حالة المراقب", "الجوال", "جهة العمل", "المنطقة", "المدينة")
             VALUES (:name, :email, :status, :phone, :work, :region, :city)
@@ -96,16 +90,11 @@ def اضافة_مراقب(بيانات):
         conn.execute(استعلام, بيانات)
         conn.commit()
 
-# دالة جلب الحملات (تأكدي أنها هكذا لتعمل الإحصائيات)
-def جلب_الحملات():
+def جلب_المراقبين():
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            df = pd.read_sql('SELECT * FROM campaigns', conn)
-            # تحويل التاريخ إلى صيغة يفهمها الباندا للإحصائيات
-            if not df.empty and 'التاريخ' in df.columns:
-                df['التاريخ'] = pd.to_datetime(df['التاريخ'])
-            return df
+            return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
     except:
         return pd.DataFrame()
 
@@ -114,8 +103,8 @@ def تحقق_دخول_المراقب(ايميل):
     try:
         with engine.connect() as conn:
             استعلام = text('SELECT "الاسم" FROM observers WHERE LOWER("الايميل") = LOWER(:email) LIMIT 1')
-            result = conn.execute(استعلام, {"email": ايميل.strip()}).fetchone()
-            return result[0] if result else None
+            res = conn.execute(استعلام, {"email": ايميل.strip()}).fetchone()
+            return res[0] if res else None
     except:
         return None
 
