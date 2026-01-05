@@ -4,7 +4,6 @@ import pandas as pd
 
 def get_engine():
     db_url = st.secrets["connections"]["postgresql"]["url"]
-    # تصحيح الرابط تلقائياً إذا لزم الأمر
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
     return create_engine(db_url, pool_pre_ping=True)
@@ -12,7 +11,6 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # جدول الحملات
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
@@ -23,23 +21,17 @@ def init_db():
                 "اسم التجمع" TEXT,
                 "قائد الفريق" TEXT,
                 "المراقبين المشاركين" TEXT,
-                "عدد المنشآت بناءً على المسح الميداني" INTEGER,
+                "عدد المنشآت بناءً على المسح الميدا" INTEGER,
                 "مأموري الضبط من وزارة التجارة" TEXT,
                 "موقع التجمع على الخرائط" TEXT,
                 "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         '''))
-        # جدول المراقبين مع حقل الجوال
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
-                "الاسم" TEXT,
-                "الايميل" TEXT,
-                "حالة المراقب" TEXT,
-                "الجوال" TEXT,
-                "جهة العمل" TEXT,
-                "المنطقة" TEXT,
-                "المدينة" TEXT
+                "الاسم" TEXT, "الايميل" TEXT, "حالة المراقب" TEXT,
+                "الجوال" TEXT, "جهة العمل" TEXT, "المنطقة" TEXT, "المدينة" TEXT
             );
         '''))
         conn.commit()
@@ -50,7 +42,7 @@ def اضافة_حملة(بيانات):
         استعلام = text('''
             INSERT INTO campaigns 
             ("اليوم", "التاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
-             "عدد المنشآت بناءً على المسح الميداني", "مأموري الضبط من وزارة التجارة", "موقع التجمع على الخرائط")
+             "عدد المنشآت بناءً على المسح الميدا", "مأموري الضبط من وزارة التجارة", "موقع التجمع على الخرائط")
             VALUES 
             (:day, :date, :region, :city, :group_name, :leader, :participants, :survey_count, :inspectors, :map_link)
         ''')
@@ -75,8 +67,7 @@ def جلب_الحملات():
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            df = pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
-            return df
+            return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
     except:
         return pd.DataFrame()
 
