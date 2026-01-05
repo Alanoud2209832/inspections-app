@@ -57,18 +57,23 @@ def اضافة_حملة(بيانات):
 def جلب_مراقبين_بالجهة(المنطقة, الجهات):
     if not الجهات:
         return []
+    
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            # فلترة المراقبين بناءً على المنطقة وجهة العمل
+            # نستخدم IN مع تحويل القائمة لضمان التوافق مع SQL
             استعلام = text('''
                 SELECT "الاسم" FROM observers 
-                WHERE "المنطقة" = :reg AND "جهة العمل" IN :works
+                WHERE "المنطقة" = :reg 
+                AND "جهة العمل" IN :works
                 ORDER BY "الاسم" ASC
             ''')
-            result = conn.execute(استعلام, {"reg": المنطقة, "works": tuple(جهات)})
-            return [row[0] for row in result]
+            # تحويل القائمة إلى tuple وهو التنسيق الذي يفهمه محرك PostgreSQL
+            result = conn.execute(استعلام, {"reg": المنطقة, "works": tuple(الجهات)})
+            names = [row[0] for row in result]
+            return names
     except Exception as e:
+        st.error(f"حدث خطأ أثناء جلب الأسماء: {e}")
         return []
 
 def جلب_الحملات():
