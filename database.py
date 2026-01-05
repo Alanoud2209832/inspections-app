@@ -1,6 +1,9 @@
 import streamlit as st
 from sqlalchemy import create_engine, text
 import pandas as pd
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 def get_engine():
     db_url = st.secrets["connections"]["postgresql"]["url"]
@@ -111,3 +114,45 @@ def جلب_حملات_المراقب(اسم_المراقب):
             return pd.read_sql(استعلام, conn, params={"name": اسم_المراقب, "name_like": f'%{اسم_المراقب}%'})
     except:
         return pd.DataFrame()
+        def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراقب, تفاصيل_الحملة):
+    # جلب البيانات من Secrets
+    smtp_user = st.secrets["email"]["smtp_user"]
+    smtp_password = st.secrets["email"]["smtp_password"]
+    
+    # إعداد نص الرسالة
+    subject = f"تكليف بمهمة ميدانية: {تفاصيل_الحملة['group_name']}"
+    body = f"""
+    <html>
+    <body dir='rtl' style='text-align: right; font-family: sans-serif;'>
+        <h2 style='color: #1E3A8A;'>أهلاً بك يا {اسم_المراقب}</h2>
+        <p>تم تكليفك بقيادة حملة رقابية جديدة، إليك التفاصيل:</p>
+        <ul>
+            <li><b>اسم التجمع:</b> {تفاصيل_الحملة['group_name']}</li>
+            <li><b>التاريخ:</b> {تفاصيل_الحملة['date']}</li>
+            <li><b>المدينة:</b> {تفاصيل_الحملة['city']}</li>
+            <li><b>رابط الموقع:</b> <a href='{تفاصيل_الحملة['map_link']}'>اضغط هنا لفتح الخرائط</a></li>
+        </ul>
+        <p>بالتوفيق في مهمتك.</p>
+        <hr>
+        <small>هذا إيميل تلقائي من نظام الإدارة الرقابية</small>
+    </body>
+    </html>
+    """
+    
+    msg = MIMEMultipart()
+    msg['From'] = smtp_user
+    msg['To'] = ايميل_المراقب
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'html'))
+    
+    try:
+        # الاتصال بخادم جوجل
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls() # تشفير الاتصال
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, ايميل_المراقب, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
