@@ -88,6 +88,7 @@ def جلب_الحملات():
 def اضافة_مراقب(بيانات):
     engine = get_engine()
     with engine.connect() as conn:
+        # تأكدي من وجود حقل "الجوال" هنا
         استعلام = text('''
             INSERT INTO observers ("الاسم", "الايميل", "حالة المراقب", "الجوال", "جهة العمل", "المنطقة", "المدينة")
             VALUES (:name, :email, :status, :phone, :work, :region, :city)
@@ -95,11 +96,16 @@ def اضافة_مراقب(بيانات):
         conn.execute(استعلام, بيانات)
         conn.commit()
 
-def جلب_المراقبين():
+# دالة جلب الحملات (تأكدي أنها هكذا لتعمل الإحصائيات)
+def جلب_الحملات():
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
+            df = pd.read_sql('SELECT * FROM campaigns', conn)
+            # تحويل التاريخ إلى صيغة يفهمها الباندا للإحصائيات
+            if not df.empty and 'التاريخ' in df.columns:
+                df['التاريخ'] = pd.to_datetime(df['التاريخ'])
+            return df
     except:
         return pd.DataFrame()
 
