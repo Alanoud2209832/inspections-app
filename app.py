@@ -17,81 +17,87 @@ if 'logged_in' not in st.session_state:
     st.session_state.update({'logged_in': False, 'user_role': None, 'user_name': None})
 
 # --- تنسيق CSS لتحسين الواجهة وتوسيطها ---
+# --- تنسيق CSS المطور للواجهة ---
 st.markdown("""
     <style>
-    /* توسيط الحاوية الرئيسية */
-    .main > div {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
+    /* إخفاء القائمة الجانبية في صفحة تسجيل الدخول */
+    [data-testid="stSidebar"] { display: none; }
     
-    /* تصميم بطاقة تسجيل الدخول */
-    [data-testid="stForm"] {
-        border: 1px solid #e6e9ef;
-        border-radius: 15px;
-        padding: 30px;
-        background-color: #ffffff;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    /* تنسيق الحاوية الرئيسية */
+    .login-container {
         max-width: 450px;
         margin: auto;
-    }
-    
-    /* تحسين العناوين */
-    h1, h2 {
+        padding: 40px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         text-align: center;
-        color: #1E3A8A; /* لون أزرق رسمي */
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     
-    /* تنسيق زر الدخول */
-    .stButton > button {
-        width: 100%;
-        border-radius: 8px;
-        background-color: #1E3A8A;
-        color: white;
-        height: 3em;
-        font-weight: bold;
-    }
+    /* تنسيق العناوين */
+    .main-title { color: #1E3A8A; font-size: 28px; font-weight: bold; margin-bottom: 5px; }
+    .sub-title { color: #64748b; margin-bottom: 30px; font-size: 14px; }
     
-    /* إخفاء القائمة الجانبية في صفحة تسجيل الدخول */
-    [data-testid="stSidebar"] {
-        display: none;
+    /* تنسيق الحقول */
+    .stTextInput > div > div > input {
+        border-radius: 10px;
+        height: 45px;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # --- واجهة تسجيل الدخول المحدثة ---
 if not st.session_state['logged_in']:
-    # استخدام أعمدة لتوسيط النموذج في الشاشة
+    # استخدام session_state لتحديد أي نموذج يظهر (مراقب أو مدير)
+    if 'login_mode' not in st.session_state:
+        st.session_state['login_mode'] = None
+
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.write("## 🛡️ نظام الإدارة الرقابية")
-        st.write("<p style='text-align: center; color: gray;'>يرجى تسجيل الدخول للوصول إلى لوحة التحكم</p>", unsafe_allow_html=True)
+        st.markdown('<div class="main-title">🛡️ نظام الإدارة الرقابية</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sub-title">اختر نوع الحساب للوصول إلى صلاحياتك</div>', unsafe_allow_html=True)
+
+        # صف الأزرار لاختيار نوع الدخول
+        btn_col1, btn_col2 = st.columns(2)
         
-        login_type = st.radio("دخول بصفتي:", ["مراقب ميداني", "إدارة النظام"], horizontal=True)
+        with btn_col1:
+            if st.button("👤 مراقب ميداني", use_container_width=True):
+                st.session_state['login_mode'] = 'observer'
         
-        with st.form("login_form"):
-            if login_type == "إدارة النظام":
-                pwd = st.text_input("كلمة مرور الإدارة", type="password", placeholder="••••••••")
-                submit = st.form_submit_button("تسجيل الدخول للنظام")
-                if submit:
+        with btn_col2:
+            if st.button("⚙️ إدارة النظام", use_container_width=True):
+                st.session_state['login_mode'] = 'admin'
+
+        st.divider()
+
+        # إظهار النموذج بناءً على الاختيار
+        if st.session_state['login_mode'] == 'admin':
+            with st.form("admin_login"):
+                st.subheader("دخول الإدارة")
+                pwd = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
+                if st.form_submit_button("دخول النظام", use_container_width=True):
                     if pwd == "Admin2026":
                         st.session_state.update({'logged_in': True, 'user_role': 'admin'})
                         st.rerun()
                     else:
-                        st.error("⚠️ كلمة المرور غير صحيحة")
-            else:
-                email = st.text_input("البريد الإلكتروني للمراقب", placeholder="example@domain.com")
-                submit = st.form_submit_button("دخول المراقب الميداني")
-                if submit:
+                        st.error("كلمة المرور خاطئة")
+
+        elif st.session_state['login_mode'] == 'observer':
+            with st.form("observer_login"):
+                st.subheader("دخول المراقبين")
+                email = st.text_input("البريد الإلكتروني", placeholder="example@domain.com")
+                if st.form_submit_button("تحقق ودخول", use_container_width=True):
                     name = تحقق_دخول_المراقب(email)
                     if name:
                         st.session_state.update({'logged_in': True, 'user_role': 'observer', 'user_name': name})
                         st.rerun()
                     else:
-                        st.error("⚠️ هذا البريد غير مسجل في قاعدة البيانات")
+                        st.error("البريد غير مسجل")
+        
+        else:
+            st.info("الرجاء النقر على نوع الحساب أعلاه للمتابعة")
+
     st.stop()
 
 if st.sidebar.button("تسجيل الخروج"):
