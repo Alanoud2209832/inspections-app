@@ -9,34 +9,12 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # جدول الحملات مع فصل اليوم والتاريخ
-        conn.execute(text('''
-            CREATE TABLE IF NOT EXISTS campaigns (
-                "م" SERIAL PRIMARY KEY,
-                "اليوم" TEXT,
-                "التاريخ" DATE,
-                "المنطقة" TEXT,
-                "المدينة" TEXT,
-                "اسم التجمع" TEXT,
-                "قائد الفريق" TEXT,
-                "المراقبين المشاركين" TEXT,
-                "عدد المنشآت بناءً على المسح الميداني" INTEGER,
-                "مأموري الضبط من وزارة التجارة" TEXT,
-                "موقع التجمع على الخرائط" TEXT,
-                "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        '''))
-        # جدول المراقبين
+        # إنشاء الجداول إذا لم تكن موجودة
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
-                "الاسم" TEXT,
-                "الايميل" TEXT,
-                "حالة المراقب" TEXT,
-                "الجوال" TEXT,
-                "جهة العمل" TEXT,
-                "المنطقة" TEXT,
-                "المدينة" TEXT
+                "الاسم" TEXT, "الايميل" TEXT, "حالة المراقب" TEXT,
+                "الجوال" TEXT, "جهة العمل" TEXT, "المنطقة" TEXT, "المدينة" TEXT
             );
         '''))
         conn.commit()
@@ -54,35 +32,21 @@ def اضافة_حملة(بيانات):
         conn.execute(استعلام, بيانات)
         conn.commit()
 
-# استبدلي الدالة الموجودة في database.py بهذه النسخة المحسنة
 def جلب_مراقبين_بالجهة(المنطقة, الجهات):
-    if not الجهات:
-        return []
-    
+    if not الجهات: return []
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            # نستخدم tuple لتحويل القائمة لتنسيق يفهمه SQL
-            works_tuple = tuple(الجهات)
-            
-            # معالجة حالة الاختيار الواحد (بايثون تضع فاصلة زائدة تفسد الاستعلام)
-            if len(الجهات) == 1:
-                استعلام = text('''
-                    SELECT "الاسم" FROM observers 
-                    WHERE "المنطقة" = :reg AND "جهة العمل" = :work
-                ''')
-                params = {"reg": المنطقة, "work": الجهات[0]}
-            else:
-                استعلام = text('''
-                    SELECT "الاسم" FROM observers 
-                    WHERE "المنطقة" = :reg AND "جهة العمل" IN :works
-                ''')
-                params = {"reg": المنطقة, "works": works_tuple}
-            
-            result = conn.execute(استعلام, params)
+            # تحويل القائمة إلى tuple ليتوافق مع SQL IN
+            استعلام = text('''
+                SELECT "الاسم" FROM observers 
+                WHERE "المنطقة" = :reg AND "جهة العمل" IN :works
+            ''')
+            result = conn.execute(استعلام, {"reg": المنطقة, "works": tuple(الجهات)})
             return [row[0] for row in result]
-    except Exception as e:
+    except:
         return []
+
 def جلب_الحملات():
     engine = get_engine()
     with engine.connect() as conn:
@@ -115,8 +79,7 @@ def جلب_حملات_المراقب(اسم_المراقب):
     with engine.connect() as conn:
         استعلام = text('''
             SELECT * FROM campaigns 
-            WHERE "قائد الفريق" = :name 
-            OR "المراقبين المشاركين" LIKE :name_like
+            WHERE "قائد الفريق" = :name OR "المراقبين المشاركين" LIKE :name_like
             ORDER BY "م" DESC
         ''')
         return pd.read_sql(استعلام, conn, params={"name": اسم_المراقب, "name_like": f'%{اسم_المراقب}%'})
