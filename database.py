@@ -9,12 +9,39 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # إنشاء جدول المراقبين إذا لم يكن موجوداً
+        # إنشاء جدول الحملات بالهيكل الأساسي إذا لم يكن موجوداً
+        conn.execute(text('''
+            CREATE TABLE IF NOT EXISTS campaigns (
+                "م" SERIAL PRIMARY KEY,
+                "المنطقة" TEXT,
+                "المدينة" TEXT,
+                "اسم التجمع" TEXT,
+                "قائد الفريق" TEXT
+            );
+        '''))
+        
+        # --- كود الإصلاح التلقائي للأعمدة الناقصة ---
+        columns_to_add = {
+            "اليوم": "TEXT",
+            "التاريخ": "DATE",
+            "المراقبين المشاركين": "TEXT",
+            "عدد المنشآت بناءً على المسح الميداني": "INTEGER",
+            "مأموري الضبط من وزارة التجارة": "TEXT",
+            "موقع التجمع على الخرائط": "TEXT"
+        }
+        
+        for col, dtype in columns_to_add.items():
+            try:
+                # محاولة إضافة العمود، إذا كان موجوداً سيفشل الأمر بصمت (هذا ما نريده)
+                conn.execute(text(f'ALTER TABLE campaigns ADD COLUMN "{col}" {dtype};'))
+            except Exception:
+                pass # العمود موجود مسبقاً، لا نفعل شيئاً
+        
+        # إنشاء جدول المراقبين
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
-                "الاسم" TEXT, "الايميل" TEXT, "حالة المراقب" TEXT,
-                "الجوال" TEXT, "جهة العمل" TEXT, "المنطقة" TEXT, "المدينة" TEXT
+                "الاسم" TEXT, "الايميل" TEXT, "جهة العمل" TEXT, "المنطقة" TEXT
             );
         '''))
         conn.commit()
