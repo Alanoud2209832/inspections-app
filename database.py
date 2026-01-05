@@ -52,6 +52,7 @@ def add_campaign(data):
         ''')
         conn.execute(query, data)
         conn.commit()
+        
 
 def get_campaigns():
     engine = get_engine()
