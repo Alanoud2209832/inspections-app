@@ -1,10 +1,15 @@
+
 import streamlit as st
 from sqlalchemy import create_engine, text
 import pandas as pd
 
 def get_engine():
-    # تأكدي أن الرابط في Secrets ينتهي بـ ?sslmode=require
     db_url = st.secrets["connections"]["postgresql"]["url"]
+    
+    # تصحيح الرابط إذا كان يبدأ بـ postgres:// ليصبح postgresql://
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        
     return create_engine(db_url, pool_pre_ping=True)
 
 def init_db():
