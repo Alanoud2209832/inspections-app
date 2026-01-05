@@ -9,6 +9,7 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
+        # إنشاء جدول المراقبين إذا لم يكن موجوداً
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
@@ -21,7 +22,7 @@ def init_db():
 def اضافة_حملة(بيانات):
     engine = get_engine()
     with engine.connect() as conn:
-        # تأكدي أن الأسماء هنا تطابق جدول Neon تماماً
+        # هنا التأكد من مطابقة أسماء الأعمدة العربية مع قيم بايثون
         استعلام = text('''
             INSERT INTO campaigns 
             ("اليوم", "التاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
@@ -37,7 +38,7 @@ def جلب_مراقبين_بالجهة(المنطقة, الجهات):
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            # تحويل القائمة لـ tuple ليعمل استعلام IN بشكل صحيح
+            # تحويل القائمة لـ tuple ليعمل SQL IN بشكل صحيح
             استعلام = text('''
                 SELECT "الاسم" FROM observers 
                 WHERE "المنطقة" = :reg AND "جهة العمل" IN :works
