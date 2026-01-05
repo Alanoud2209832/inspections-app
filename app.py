@@ -35,7 +35,7 @@ st.markdown("""
     }
     
     /* تنسيق العناوين */
-    .main-title { color: #1E3A8A; font-size: 33px; font-weight: bold; margin-bottom: 5px; text-align: center; }
+    .main-title { color: #0B3B17; font-size: 33px; font-weight: bold; margin-bottom: 5px; text-align: center; }
     .sub-title { color: #64748b; margin-bottom: 30px; font-size: 14px; text-align: center; }
     
     /* تنسيق الحقول */
