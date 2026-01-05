@@ -3,45 +3,42 @@ from sqlalchemy import create_engine, text
 import pandas as pd
 
 def get_engine():
+    # تأكدي أن الرابط في Secrets ينتهي بـ ?sslmode=require
     db_url = st.secrets["connections"]["postgresql"]["url"]
-    return create_engine(db_url)
+    return create_engine(db_url, pool_pre_ping=True)
 
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # إنشاء جدول الحملات بالهيكل الأساسي إذا لم يكن موجوداً
+        # 1. إنشاء جدول الحملات
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
+                "اليوم" TEXT,
+                "التاريخ" DATE,
                 "المنطقة" TEXT,
                 "المدينة" TEXT,
                 "اسم التجمع" TEXT,
-                "قائد الفريق" TEXT
+                "قائد الفريق" TEXT,
+                "المراقبين المشاركين" TEXT,
+                "عدد المنشآت بناءً على المسح الميداني" INTEGER,
+                "مأموري الضبط من وزارة التجارة" TEXT,
+                "موقع التجمع على الخرائط" TEXT,
+                "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         '''))
         
-        # --- كود الإصلاح التلقائي للأعمدة الناقصة ---
-        columns_to_add = {
-            "اليوم": "TEXT",
-            "التاريخ": "DATE",
-            "المراقبين المشاركين": "TEXT",
-            "عدد المنشآت بناءً على المسح الميداني": "INTEGER",
-            "مأموري الضبط من وزارة التجارة": "TEXT",
-            "موقع التجمع على الخرائط": "TEXT"
-        }
-        
-        for col, dtype in columns_to_add.items():
-            try:
-                # محاولة إضافة العمود، إذا كان موجوداً سيفشل الأمر بصمت (هذا ما نريده)
-                conn.execute(text(f'ALTER TABLE campaigns ADD COLUMN "{col}" {dtype};'))
-            except Exception:
-                pass # العمود موجود مسبقاً، لا نفعل شيئاً
-        
-        # إنشاء جدول المراقبين
+        # 2. إنشاء جدول المراقبين
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
-                "الاسم" TEXT, "الايميل" TEXT, "جهة العمل" TEXT, "المنطقة" TEXT
+                "الاسم" TEXT,
+                "الايميل" TEXT,
+                "حالة المراقب" TEXT,
+                "الجوال" TEXT,
+                "جهة العمل" TEXT,
+                "المنطقة" TEXT,
+                "المدينة" TEXT
             );
         '''))
         conn.commit()
@@ -49,7 +46,6 @@ def init_db():
 def اضافة_حملة(بيانات):
     engine = get_engine()
     with engine.connect() as conn:
-        # هنا التأكد من مطابقة أسماء الأعمدة العربية مع قيم بايثون
         استعلام = text('''
             INSERT INTO campaigns 
             ("اليوم", "التاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
@@ -65,20 +61,24 @@ def جلب_مراقبين_بالجهة(المنطقة, الجهات):
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            # تحويل القائمة لـ tuple ليعمل SQL IN بشكل صحيح
+            # تحويل القائمة إلى tuple للبحث بـ IN
             استعلام = text('''
                 SELECT "الاسم" FROM observers 
                 WHERE "المنطقة" = :reg AND "جهة العمل" IN :works
+                ORDER BY "الاسم" ASC
             ''')
             result = conn.execute(استعلام, {"reg": المنطقة, "works": tuple(الجهات)})
             return [row[0] for row in result]
-    except:
+    except Exception as e:
         return []
 
 def جلب_الحملات():
     engine = get_engine()
-    with engine.connect() as conn:
-        return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
+    try:
+        with engine.connect() as conn:
+            return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
+    except:
+        return pd.DataFrame()
 
 def اضافة_مراقب(بيانات):
     engine = get_engine()
@@ -92,22 +92,31 @@ def اضافة_مراقب(بيانات):
 
 def جلب_المراقبين():
     engine = get_engine()
-    with engine.connect() as conn:
-        return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
+    try:
+        with engine.connect() as conn:
+            return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
+    except:
+        return pd.DataFrame()
 
 def تحقق_دخول_المراقب(ايميل):
     engine = get_engine()
-    with engine.connect() as conn:
-        استعلام = text('SELECT "الاسم" FROM observers WHERE LOWER("الايميل") = LOWER(:email) LIMIT 1')
-        النتيجة = conn.execute(استعلام, {"email": ايميل.strip()}).fetchone()
-        return النتيجة[0] if النتيجة else None
+    try:
+        with engine.connect() as conn:
+            استعلام = text('SELECT "الاسم" FROM observers WHERE LOWER("الايميل") = LOWER(:email) LIMIT 1')
+            result = conn.execute(استعلام, {"email": ايميل.strip()}).fetchone()
+            return result[0] if result else None
+    except:
+        return None
 
 def جلب_حملات_المراقب(اسم_المراقب):
     engine = get_engine()
-    with engine.connect() as conn:
-        استعلام = text('''
-            SELECT * FROM campaigns 
-            WHERE "قائد الفريق" = :name OR "المراقبين المشاركين" LIKE :name_like
-            ORDER BY "م" DESC
-        ''')
-        return pd.read_sql(استعلام, conn, params={"name": اسم_المراقب, "name_like": f'%{اسم_المراقب}%'})
+    try:
+        with engine.connect() as conn:
+            استعلام = text('''
+                SELECT * FROM campaigns 
+                WHERE "قائد الفريق" = :name OR "المراقبين المشاركين" LIKE :name_like
+                ORDER BY "م" DESC
+            ''')
+            return pd.read_sql(استعلام, conn, params={"name": اسم_المراقب, "name_like": f'%{اسم_المراقب}%'})
+    except:
+        return pd.DataFrame()
