@@ -55,14 +55,14 @@ if not st.session_state['logged_in']:
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown('<div class="main-title">🛡️ نظام الإدارة الرقابية</div>', unsafe_allow_html=True)
+        st.markdown('<div class="main-title">نظام تنظيم الحملات الرقابية</div>', unsafe_allow_html=True)
         st.markdown('<div class="sub-title">اختر نوع الحساب للوصول إلى صلاحياتك</div>', unsafe_allow_html=True)
 
         # صف الأزرار لاختيار نوع الدخول
         btn_col1, btn_col2 = st.columns(2)
         
         with btn_col1:
-            if st.button("👤 مراقب ميداني", use_container_width=True):
+            if st.button("👤 مراقب ", use_container_width=True):
                 st.session_state['login_mode'] = 'observer'
         
         with btn_col2:
@@ -74,9 +74,9 @@ if not st.session_state['logged_in']:
         # إظهار النموذج بناءً على الاختيار
         if st.session_state['login_mode'] == 'admin':
             with st.form("admin_login"):
-                st.subheader("دخول الإدارة")
+                st.subheader("تسجيل دخول للنظام")
                 pwd = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
-                if st.form_submit_button("دخول النظام", use_container_width=True):
+                if st.form_submit_button("دخول", use_container_width=True):
                     if pwd == "Admin2026":
                         st.session_state.update({'logged_in': True, 'user_role': 'admin'})
                         st.rerun()
@@ -86,17 +86,17 @@ if not st.session_state['logged_in']:
         elif st.session_state['login_mode'] == 'observer':
             with st.form("observer_login"):
                 st.subheader("دخول المراقبين")
-                email = st.text_input("البريد الإلكتروني", placeholder="example@domain.com")
-                if st.form_submit_button("تحقق ودخول", use_container_width=True):
+                email = st.text_input("الرجاء ادخال البريد الإلكتروني", placeholder="example@domain.com")
+                if st.form_submit_button("دخول", use_container_width=True):
                     name = تحقق_دخول_المراقب(email)
                     if name:
                         st.session_state.update({'logged_in': True, 'user_role': 'observer', 'user_name': name})
                         st.rerun()
                     else:
-                        st.error("البريد غير مسجل")
+                        st.error("البريد الالكتروني غير مسجل")
         
         else:
-            st.info("الرجاء النقر على نوع الحساب أعلاه للمتابعة")
+            st.info("الرجاء اختيار  نوع الحساب للمتابعة")
 
     st.stop()
 
