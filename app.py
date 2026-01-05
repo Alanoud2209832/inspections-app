@@ -94,15 +94,30 @@ if st.session_state['user_role'] == 'admin':
             inspectors = st.text_area("مأموري الضبط المشاركين")
             map_link = st.text_input("رابط الموقع الجغرافي")
             
-            if st.form_submit_button("اعتماد وحفظ البيانات"):
-                if group_name and leader != "لا يوجد":
-                    p_str = ", ".join(participants) if participants else "لا يوجد"
-                    add_campaign({"day_date": str(selected_date), "region": region, "city": city, 
-                                  "group_name": group_name, "leader": leader, "participants": p_str,
-                                  "survey_count": int(survey_count), "inspectors": inspectors, "map_link": map_link})
-                    st.success("تم الحفظ بنجاح")
-                else:
-                    st.error("يرجى استكمال البيانات الأساسية")
+# ابحثي عن هذا الجزء في ملف app.py وحدثيه
+if st.form_submit_button("اعتماد وحفظ البيانات"):
+    if group_name and leader != "لا يوجد":
+        p_str = ", ".join(participants) if participants else "لا يوجد"
+        
+        # هذه البيانات يجب أن تطابق الـ Parameters في database.py
+        data_to_save = {
+            "day_date": str(selected_date), 
+            "region": region, 
+            "city": city, 
+            "group_name": group_name, 
+            "leader": leader, 
+            "participants": p_str,
+            "survey_count": int(survey_count), 
+            "inspectors": inspectors, # تأكدي أن المفتاح هنا هو inspectors
+            "map_link": map_link
+        }
+        
+        try:
+            add_campaign(data_to_save)
+            st.success("تم الحفظ بنجاح")
+        except Exception as e:
+            # هذا سيطبع لنا تفصيل الخطأ إذا حدث (مفيد جداً للتصحيح)
+            st.error(f"حدث خطأ برمي أثناء الحفظ: {e}")
 
     elif choice == "سجل الحملات":
         st.header("سجل الجولات الرقابية")
