@@ -160,6 +160,14 @@ if st.session_state['user_role'] == 'admin':
                     اضافة_حملة(data)
                     st.success("تم الحفظ بنجاح")
                 else: st.error("أكمل الحقول المطلوبة واختيار القائد")
+                  with get_engine().connect() as conn:
+    res = conn.execute(text('SELECT "الايميل" FROM observers WHERE "الاسم" = :name'), {"name": leader}).fetchone()
+    if res:
+        ايميل_القائد = res[0]
+        ارسل_بريد_تكليف(ايميل_القائد, leader, data)
+        st.info(f"تم إرسال إشعار بريدي إلى {leader}")
+
+st.success("تم الحفظ بنجاح")
 
     elif choice == "سجل الحملات":
         st.header("سجل الحملات الميدانية")
