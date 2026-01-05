@@ -9,11 +9,12 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
-        # جدول الحملات
+        # جدول الحملات مع فصل اليوم والتاريخ
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
-                "اليوم والتاريخ" TEXT,
+                "اليوم" TEXT,
+                "التاريخ" DATE,
                 "المنطقة" TEXT,
                 "المدينة" TEXT,
                 "اسم التجمع" TEXT,
@@ -45,29 +46,35 @@ def اضافة_حملة(بيانات):
     with engine.connect() as conn:
         استعلام = text('''
             INSERT INTO campaigns 
-            ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
+            ("اليوم", "التاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
              "عدد المنشآت بناءً على المسح الميداني", "مأموري الضبط من وزارة التجارة", "موقع التجمع على الخرائط")
             VALUES 
-            (:تاريخ, :منطقة, :مدينة, :تجمع, :قائد, :مشاركين, :عدد, :ضبط, :رابط)
+            (:day, :date, :region, :city, :group_name, :leader, :participants, :survey_count, :inspectors, :map_link)
         ''')
         conn.execute(استعلام, بيانات)
         conn.commit()
+
+def جلب_مراقبين_بالجهة(المنطقة, الجهات):
+    if not الجهات:
+        return []
+    engine = get_engine()
+    try:
+        with engine.connect() as conn:
+            # فلترة المراقبين بناءً على المنطقة وجهة العمل
+            استعلام = text('''
+                SELECT "الاسم" FROM observers 
+                WHERE "المنطقة" = :reg AND "جهة العمل" IN :works
+                ORDER BY "الاسم" ASC
+            ''')
+            result = conn.execute(استعلام, {"reg": المنطقة, "works": tuple(جهات)})
+            return [row[0] for row in result]
+    except Exception as e:
+        return []
 
 def جلب_الحملات():
     engine = get_engine()
     with engine.connect() as conn:
         return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
-
-def جلب_حملات_المراقب(اسم_المراقب):
-    engine = get_engine()
-    with engine.connect() as conn:
-        استعلام = text('''
-            SELECT * FROM campaigns 
-            WHERE "قائد الفريق" = :name 
-            OR "المراقبين المشاركين" LIKE :name_like
-            ORDER BY "م" DESC
-        ''')
-        return pd.read_sql(استعلام, conn, params={"name": اسم_المراقب, "name_like": f'%{اسم_المراقب}%'})
 
 def اضافة_مراقب(بيانات):
     engine = get_engine()
@@ -84,19 +91,20 @@ def جلب_المراقبين():
     with engine.connect() as conn:
         return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
 
-def جلب_المراقبين_حسب_المنطقة(اسم_المنطقة):
-    engine = get_engine()
-    try:
-        with engine.connect() as conn:
-            استعلام = text('SELECT "الاسم" FROM observers WHERE "المنطقة" = :reg ORDER BY "الاسم" ASC')
-            النتيجة = conn.execute(استعلام, {"reg": اسم_المنطقة})
-            return [row[0] for row in النتيجة]
-    except:
-        return []
-
 def تحقق_دخول_المراقب(ايميل):
     engine = get_engine()
     with engine.connect() as conn:
         استعلام = text('SELECT "الاسم" FROM observers WHERE LOWER("الايميل") = LOWER(:email) LIMIT 1')
         النتيجة = conn.execute(استعلام, {"email": ايميل.strip()}).fetchone()
         return النتيجة[0] if النتيجة else None
+
+def جلب_حملات_المراقب(اسم_المراقب):
+    engine = get_engine()
+    with engine.connect() as conn:
+        استعلام = text('''
+            SELECT * FROM campaigns 
+            WHERE "قائد الفريق" = :name 
+            OR "المراقبين المشاركين" LIKE :name_like
+            ORDER BY "م" DESC
+        ''')
+        return pd.read_sql(استعلام, conn, params={"name": اسم_المراقب, "name_like": f'%{اسم_المراقب}%'})
