@@ -43,6 +43,8 @@ def init_db():
 def add_campaign(data):
     engine = get_engine()
     with engine.connect() as conn:
+        # هنا نتأكد أن أسماء الأعمدة (بين علامات التنصيص) تطابق ما في Neon
+        # وأن المتغيرات (بعد النقطتين :) تطابق ما نرسله من app.py
         query = text('''
             INSERT INTO campaigns 
             ("اليوم والتاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
