@@ -9,6 +9,7 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
+        # جدول الحملات
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
@@ -24,6 +25,7 @@ def init_db():
                 "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         '''))
+        # جدول المراقبين
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
@@ -56,11 +58,9 @@ def get_campaigns():
     with engine.connect() as conn:
         return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
 
-# وظيفة جديدة لجلب حملات مراقب محدد
 def get_campaigns_for_observer(observer_name):
     engine = get_engine()
     with engine.connect() as conn:
-        # البحث عن الاسم في خانة القائد أو ضمن خانة المشاركين
         query = text('''
             SELECT * FROM campaigns 
             WHERE "قائد الفريق" = :name 
@@ -94,10 +94,10 @@ def get_observers_by_region(region_name):
     except:
         return []
 
-# وظيفة للتحقق من بيانات الدخول
-def check_observer_login(phone):
+def check_observer_login(email):
     engine = get_engine()
     with engine.connect() as conn:
-        query = text('SELECT "الاسم" FROM observers WHERE "الجوال" = :phone LIMIT 1')
-        result = conn.execute(query, {"phone": phone}).fetchone()
+        query = text('SELECT "الاسم" FROM observers WHERE LOWER("الايميل") = LOWER(:email) LIMIT 1')
+        result = conn.execute(query, {"email": email.strip()}).fetchone()
         return result[0] if result else None
+        
