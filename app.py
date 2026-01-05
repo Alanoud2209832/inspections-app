@@ -52,33 +52,46 @@ if st.session_state['user_role'] == 'admin':
         df = جلب_الحملات()
         
         if not df.empty:
-            # الصف الأول: الأرقام الرئيسية
+            # دالة مساعدة للتأكد من المسميات وتجنب الـ KeyError
+            def get_col_safe(df, possible_names):
+                for name in possible_names:
+                    if name in df.columns:
+                        return name
+                return None
+
+            # البحث عن عمود المنشآت وعمود الجهات
+            col_sites = get_col_safe(df, ["عدد المنشآت بناءً على المسح الميداني", "المنشآت", "عدد المنشآت"])
+            col_inspectors = get_col_safe(df, ["مأموري الضبط من وزارة التجارة", "مأموري الضبط"])
+
             c1, c2, c3 = st.columns(3)
             with c1:
                 st.metric("إجمالي الحملات", len(df))
             with c2:
-                # التأكد من تحويل العمود لرقم لحساب المجموع
-                total_sites = pd.to_numeric(df["عدد المنشآت بناءً على المسح الميداني"], errors='coerce').sum()
-                st.metric("إجمالي المنشآت الممسوحة", int(total_sites))
+                if col_sites:
+                    total_sites = pd.to_numeric(df[col_sites], errors='coerce').sum()
+                    st.metric("إجمالي المنشآت الممسوحة", int(total_sites))
+                else:
+                    st.metric("إجمالي المنشآت الممسوحة", "0")
             with c3:
-                st.metric("المناطق النشطة", df["المنطقة"].nunique())
+                st.metric("المناطق النشطة", df["المنطقة"].nunique() if "المنطقة" in df.columns else 0)
 
             st.divider()
             
-            # الصف الثاني: الرسوم البيانية
             col_chart1, col_chart2 = st.columns(2)
             with col_chart1:
-                st.subheader("توزيع الحملات حسب المناطق")
-                region_counts = df["المنطقة"].value_counts()
-                st.bar_chart(region_counts)
+                if "المنطقة" in df.columns:
+                    st.subheader("توزيع الحملات حسب المناطق")
+                    st.bar_chart(df["المنطقة"].value_counts())
             
             with col_chart2:
-                st.subheader("مشاركة الجهات الضبطية")
-                # معالجة النصوص لأن مأموري الضبط قد يحتوي على أكثر من جهة مفصولة بفاصلة
-                inspectors_series = df["مأموري الضبط من وزارة التجارة"].str.split(', ').explode()
-                st.bar_chart(inspectors_series.value_counts())
+                if col_inspectors:
+                    st.subheader("مشاركة الجهات الضبطية")
+                    # تنظيف البيانات وتقسيمها إذا كانت تحتوي على فواصل
+                    inspectors_list = df[col_inspectors].dropna().astype(str).str.split(', ').explode()
+                    st.bar_chart(inspectors_list.value_counts())
         else:
-            st.info("لا توجد بيانات حالية لعرض الإحصائيات.")
+            st.info("لا توجد بيانات مسجلة حالياً لعرض الإحصائيات.")
+          
 
     elif choice == "إضافة حملة جديدة":
         st.header("تسجيل حملة ميدانية")
