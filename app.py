@@ -81,17 +81,14 @@ if st.session_state['user_role'] == 'admin':
     menu = ["الإحصائيات", "إضافة حملة جديدة", "سجل الحملات", "دليل المراقبين"]
     choice = st.sidebar.selectbox("القائمة:", menu)
 
-   if choice == "الإحصائيات":
+    if choice == "الإحصائيات":
         st.header("📊 لوحة المؤشرات العامة")
         df_campaigns = جلب_الحملات()
         df_observers = جلب_المراقبين()
         
-        # إنشاء الأعمدة للمؤشرات الجديدة
         c1, c2 = st.columns(2)
-        
         with c1:
             st.metric("إجمالي الحملات", len(df_campaigns) if not df_campaigns.empty else 0)
-        
         with c2:
             st.metric("عدد المراقبين المسجلين", len(df_observers) if not df_observers.empty else 0)
             
@@ -102,12 +99,10 @@ if st.session_state['user_role'] == 'admin':
             col_inspectors = "مأموري الضبط من وزارة التجارة"
             
             col_chart1, col_chart2 = st.columns(2)
-            
             with col_chart1:
                 st.subheader("توزيع الحملات حسب المناطق")
                 if col_region in df_campaigns.columns:
                     st.bar_chart(df_campaigns[col_region].value_counts())
-            
             with col_chart2:
                 if col_inspectors in df_campaigns.columns:
                     st.subheader("مشاركة الجهات")
@@ -149,10 +144,8 @@ if st.session_state['user_role'] == 'admin':
                         "inspectors": ", ".join(inspectors_choice),
                         "map_link": map_link
                     }
-                   # حفظ الحملة في قاعدة البيانات أولاً
                     اضافة_حملة(data)
                     
-                    # محاولة جلب بريد القائد وإرسال التكليف
                     try:
                         res = جلب_بريد_المراقب_بالاسم(leader)
                         if res:
@@ -165,6 +158,7 @@ if st.session_state['user_role'] == 'admin':
                         st.error(f"❌ حدث خطأ أثناء إرسال البريد: {e}")
                 else:
                     st.error("يرجى إكمال البيانات واختيار القائد")
+
     elif choice == "سجل الحملات":
         st.header("سجل الحملات الميدانية")
         st.dataframe(جلب_الحملات(), use_container_width=True)
@@ -184,12 +178,10 @@ if st.session_state['user_role'] == 'admin':
                 r = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم", "الباحة", "الحدود الشمالية", "الجوف"])
                 
                 if st.form_submit_button("حفظ بيانات المراقب 💾"):
-                    if n.lower() == "test" or len(n) < 3:
+                    if len(n) < 3:
                         st.error("❌ يرجى إدخال اسم حقيقي.")
-                    elif "@" not in e or "." not in e:
+                    elif "@" not in e:
                         st.error("❌ صيغة البريد الإلكتروني غير صحيحة.")
-                    elif not p.startswith("966") or len(p) != 12:
-                        st.error("❌ يجب أن يبدأ الجوال بـ 966 ويتكون من 12 رقماً إجمالاً.")
                     else:
                         اضافة_مراقب({"name": n, "email": e, "status": "نشط", "phone": p, "work": w, "region": r, "city": ""})
                         st.success(f"✅ تمت إضافة {n} بنجاح")
