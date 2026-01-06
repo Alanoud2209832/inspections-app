@@ -5,6 +5,7 @@ from database import (init_db, اضافة_حملة, جلب_الحملات, جل�
 import pandas as pd
 from datetime import datetime
 from sqlalchemy import text
+from database import init_db, add_campaign, get_campaigns, get_observers, add_observer, get_engine
 
 st.set_page_config(page_title="نظام الإدارة الرقابية", layout="wide")
 
