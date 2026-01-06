@@ -140,21 +140,22 @@ if st.session_state['user_role'] == 'admin':
                         "inspectors": ", ".join(inspectors_choice),
                         "map_link": map_link
                     }
+                   # حفظ الحملة في قاعدة البيانات أولاً
                     اضافة_حملة(data)
                     
+                    # محاولة جلب بريد القائد وإرسال التكليف
                     try:
-                        res = تحقق_دخول_المراقب(leader)
+                        res = جلب_بريد_المراقب_بالاسم(leader)
                         if res:
                             ارسل_بريد_تكليف(res[1], res[0], data)
-                            st.success(f"تم حفظ الحملة وإرسال بريد تكليف إلى {leader}")
+                            st.success(f"✅ تم حفظ الحملة وإرسال بريد تكليف إلى {leader}")
                             st.balloons()
                         else:
-                            st.warning("تم حفظ الحملة ولكن لم يتم العثور على بريد القائد.")
+                            st.warning("⚠️ تم حفظ الحملة، ولكن لم يتم العثور على بريد القائد في 'دليل المراقبين'.")
                     except Exception as e:
-                        st.error(f"حدث خطأ أثناء إرسال البريد: {e}")
+                        st.error(f"❌ حدث خطأ أثناء إرسال البريد: {e}")
                 else:
                     st.error("يرجى إكمال البيانات واختيار القائد")
-
     elif choice == "سجل الحملات":
         st.header("سجل الحملات الميدانية")
         st.dataframe(جلب_الحملات(), use_container_width=True)
