@@ -1,7 +1,7 @@
 import streamlit as st
 from database import (init_db, اضافة_حملة, جلب_الحملات, جلب_المراقبين, 
-                     اضافة_مراقب, جلب_مراقبين_بالجهة, تحقق_دخول_المراقب, 
-                     جلب_حملات_المراقب, get_engine, ارسل_بريد_تكليف)
+                      اضافة_مراقب, جلب_مراقبين_بالجهة, تحقق_دخول_المراقب, 
+                      جلب_حملات_المراقب, get_engine, ارسل_بريد_تكليف)
 import pandas as pd
 from datetime import datetime
 from sqlalchemy import text
@@ -129,7 +129,7 @@ if st.session_state['user_role'] == 'admin':
                 if group_name and leader != "يرجى اختيار جهة أولاً":
                     days_map = {'Monday':'الاثنين','Tuesday':'الثلاثاء','Wednesday':'الأربعاء','Thursday':'الخميس','Friday':'الجمعة','Saturday':'السبت','Sunday':'الأحد'}
                     data = {
-                        "day": days_map[date_val.strftime('%A')], "date": date_val, "region": region, "city": city,
+                        "day": days_map[date_val.strftime('%A')], "date": str(date_val), "region": region, "city": city,
                         "group_name": group_name, "leader": leader, "participants": ", ".join(participants), 
                         "survey_count": int(count), "inspectors": ", ".join(inspectors_choice), "map_link": map_link
                     }
@@ -167,7 +167,6 @@ if st.session_state['user_role'] == 'admin':
                 r = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم", "الباحة", "الحدود الشمالية", "الجوف"])
                 
                 if st.form_submit_button("حفظ بيانات المراقب 💾"):
-                    # --- التحسينات الجديدة (Validation) ---
                     if n.lower() == "test" or len(n) < 3:
                         st.error("❌ يرجى إدخال اسم حقيقي.")
                     elif "@" not in e or "." not in e:
