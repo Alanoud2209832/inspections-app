@@ -1,13 +1,12 @@
 import streamlit as st
 from database import (init_db, اضافة_حملة, جلب_الحملات, جلب_المراقبين, 
                       اضافة_مراقب, جلب_مراقبين_بالجهة, تحقق_دخول_المراقب, جلب_حملات_المراقب, 
-                      get_engine, ارسل_بريد_تكليف) # تأكدي من استيراد الدوال الجديدة
+                      get_engine, ارسل_بريد_تكليف)
 import pandas as pd
 from datetime import datetime
 from sqlalchemy import text
-from database import init_db, add_campaign, get_campaigns, get_observers, add_observer, get_engine
 
-st.set_page_config(page_title="نظام الإدارة الرقابية", layout="wide")
+st.set_page_config(page_title="نظام الإدارة الرقابية", layout="wide", page_icon="🛡️")
 
 # محاولة تهيئة الجداول عند بدء التطبيق
 try:
@@ -61,11 +60,11 @@ if not st.session_state['logged_in']:
         elif st.session_state['login_mode'] == 'observer':
             with st.form("observer_login"):
                 st.subheader("دخول المراقبين")
-                email = st.text_input("البريد الإلكتروني", placeholder="example@domain.com")
+                email_login = st.text_input("البريد الإلكتروني", placeholder="example@domain.com")
                 if st.form_submit_button("تحقق ودخول", use_container_width=True):
-                    name = تحقق_دخول_المراقب(email)
-                    if name:
-                        st.session_state.update({'logged_in': True, 'user_role': 'observer', 'user_name': name})
+                    res = تحقق_دخول_المراقب(email_login)
+                    if res:
+                        st.session_state.update({'logged_in': True, 'user_role': 'observer', 'user_name': res[0]})
                         st.rerun()
                     else: st.error("البريد غير مسجل")
         else:
@@ -110,8 +109,8 @@ if st.session_state['user_role'] == 'admin':
 
     elif choice == "إضافة حملة جديدة":
         st.header("تسجيل حملة ميدانية")
-        region = st.selectbox("المنطقة:", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
-        inspectors_choice = st.multiselect("الجهات المشاركة:", ["وزارة التجارة", "وزارة البلديات والإسكان", "وزارة الموارد البشرية", "وزارة البيئة", "هيئة الزكاة والضريبة"])
+        region = st.selectbox("المنطقة:", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم", "الباحة", "الحدود الشمالية", "الجوف"])
+        inspectors_choice = st.multiselect("الجهات المشاركة:", ["وزارة التجارة", "وزارة البلديات والإسكان", "وزارة الموارد البشرية والتنمية الاجتماعية", "وزارة البيئة والمياه والزراعة", "هيئة الزكاة والضريبة والجمارك"])
         filtered_obs = جلب_مراقبين_بالجهة(region, inspectors_choice)
 
         with st.form("camp_form_final"):
@@ -134,19 +133,16 @@ if st.session_state['user_role'] == 'admin':
                         "group_name": group_name, "leader": leader, "participants": ", ".join(participants), 
                         "survey_count": int(count), "inspectors": ", ".join(inspectors_choice), "map_link": map_link
                     }
-                    # 1. حفظ في قاعدة البيانات
                     اضافة_حملة(data)
                     
-                    # 2. إرسال الإيميل (داخل شرط الحفظ)
                     try:
-                        with get_engine().connect() as conn:
-                            res = conn.execute(text('SELECT "الايميل" FROM observers WHERE "الاسم" = :name'), {"name": leader}).fetchone()
-                            if res:
-                                ايميل_القائد = res[0]
-                                ارسل_بريد_تكليف(ايميل_القائد, leader, data)
-                                st.success(f"تم حفظ الحملة وإرسال بريد تكليف إلى {leader}")
-                            else:
-                                st.warning("تم حفظ الحملة ولكن لم يتم العثور على بريد القائد.")
+                        res = تحقق_دخول_المراقب(leader)
+                        if res:
+                            ارسل_بريد_تكليف(res[1], res[0], data)
+                            st.success(f"تم حفظ الحملة وإرسال بريد تكليف إلى {leader}")
+                            st.balloons()
+                        else:
+                            st.warning("تم حفظ الحملة ولكن لم يتم العثور على بريد القائد.")
                     except Exception as e:
                         st.error(f"حدث خطأ أثناء إرسال البريد: {e}")
                 else:
@@ -158,20 +154,36 @@ if st.session_state['user_role'] == 'admin':
 
     elif choice == "دليل المراقبين":
         t1, t2 = st.tabs(["قائمة المراقبين", "إضافة مراقب جديد"])
-        with t1: st.dataframe(جلب_المراقبين(), use_container_width=True)
+        with t1: 
+            df_obs = جلب_المراقبين()
+            st.dataframe(df_obs, use_container_width=True)
         with t2:
-            with st.form("add_obs_v2"):
-                n = st.text_input("الاسم")
-                e = st.text_input("الايميل")
-                p = st.text_input("الجوال")
-                w = st.selectbox("الجهة", ["وزارة التجارة", "وزارة البلديات والإسكان", "وزارة الموارد البشرية", "وزارة البيئة", "هيئة الزكاة والضريبة"])
-                r = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم"])
-                if st.form_submit_button("حفظ المراقب"):
-                    if n and e:
+            st.subheader("إدخال بيانات مراقب جديد")
+            with st.form("add_obs_v2", clear_on_submit=True):
+                n = st.text_input("الاسم الكامل")
+                e = st.text_input("البريد الإلكتروني", placeholder="example@domain.com")
+                p = st.text_input("رقم الجوال", value="966", help="يجب أن يبدأ بـ 966 ويتكون من 12 رقماً")
+                w = st.selectbox("الجهة", ["وزارة التجارة", "وزارة البلديات والإسكان", "وزارة الموارد البشرية والتنمية الاجتماعية", "وزارة البيئة والمياه والزراعة", "هيئة الزكاة والضريبة والجمارك"])
+                r = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم", "الباحة", "الحدود الشمالية", "الجوف"])
+                
+                if st.form_submit_button("حفظ بيانات المراقب 💾"):
+                    # --- التحسينات الجديدة (Validation) ---
+                    if n.lower() == "test" or len(n) < 3:
+                        st.error("❌ يرجى إدخال اسم حقيقي.")
+                    elif "@" not in e or "." not in e:
+                        st.error("❌ صيغة البريد الإلكتروني غير صحيحة.")
+                    elif not p.startswith("966") or len(p) != 12:
+                        st.error("❌ يجب أن يبدأ الجوال بـ 966 ويتكون من 12 رقماً إجمالاً.")
+                    else:
                         اضافة_مراقب({"name": n, "email": e, "status": "نشط", "phone": p, "work": w, "region": r, "city": ""})
-                        st.success("تمت الإضافة")
+                        st.success(f"✅ تمت إضافة {n} بنجاح")
+                        st.balloons()
 
 elif st.session_state['user_role'] == 'observer':
-    st.header(f"أهلاً بك، {st.session_state['user_name']}")
+    st.header(f"👋 أهلاً بك، {st.session_state['user_name']}")
+    st.subheader("📋 المهام الموكلة إليك")
     tasks = جلب_حملات_المراقب(st.session_state['user_name'])
-    st.dataframe(tasks if not tasks.empty else pd.DataFrame(), use_container_width=True)
+    if not tasks.empty:
+        st.dataframe(tasks, use_container_width=True)
+    else:
+        st.info("لا توجد مهام مسجلة باسمك حالياً.")
