@@ -8,23 +8,24 @@ from sqlalchemy import text
 
 st.set_page_config(page_title="نظام الإدارة الرقابية", layout="wide", page_icon="🛡️")
 
-# تهيئة الجداول عند التشغيل
+# محاولة تهيئة الجداول عند بدء التطبيق
 try:
     init_db()
 except Exception as e:
-    st.error(f"فشل الاتصال بقاعدة البيانات. تأكدي من Secrets. الخطأ: {e}")
+    st.error(f"فشل الاتصال بقاعدة البيانات. تأكدي من الرابط في Secrets. الخطأ: {e}")
     st.stop()
 
 if 'logged_in' not in st.session_state:
     st.session_state.update({'logged_in': False, 'user_role': None, 'user_name': None})
 
-# --- تنسيق CSS للواجهة ---
+# --- تنسيق CSS المطور للواجهة ---
 if not st.session_state['logged_in']:
     st.markdown("""
         <style>
         [data-testid="stSidebar"] { display: none; }
-        .main-title { color: #1E3A8A; font-size: 28px; font-weight: bold; text-align: center; }
-        .sub-title { color: #64748b; text-align: center; margin-bottom: 30px; }
+        .login-container { max-width: 450px; margin: auto; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
+        .main-title { color: #1E3A8A; font-size: 28px; font-weight: bold; margin-bottom: 5px; text-align: center; }
+        .sub-title { color: #64748b; margin-bottom: 30px; font-size: 14px; text-align: center; }
         </style>
         """, unsafe_allow_html=True)
 
@@ -34,7 +35,7 @@ if not st.session_state['logged_in']:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown('<div class="main-title">🛡️ نظام الإدارة الرقابية</div>', unsafe_allow_html=True)
-        st.markdown('<div class="sub-title">اختر نوع الحساب للمتابعة</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sub-title">اختر نوع الحساب للوصول إلى صلاحياتك</div>', unsafe_allow_html=True)
 
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
@@ -49,8 +50,8 @@ if not st.session_state['logged_in']:
         if st.session_state['login_mode'] == 'admin':
             with st.form("admin_login"):
                 st.subheader("دخول الإدارة")
-                pwd = st.text_input("كلمة المرور", type="password")
-                if st.form_submit_button("دخول", use_container_width=True):
+                pwd = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
+                if st.form_submit_button("دخول النظام", use_container_width=True):
                     if pwd == "Admin2026":
                         st.session_state.update({'logged_in': True, 'user_role': 'admin'})
                         st.rerun()
@@ -59,80 +60,129 @@ if not st.session_state['logged_in']:
         elif st.session_state['login_mode'] == 'observer':
             with st.form("observer_login"):
                 st.subheader("دخول المراقبين")
-                email_login = st.text_input("البريد الإلكتروني")
+                email_login = st.text_input("البريد الإلكتروني", placeholder="example@domain.com")
                 if st.form_submit_button("تحقق ودخول", use_container_width=True):
                     res = تحقق_دخول_المراقب(email_login)
                     if res:
                         st.session_state.update({'logged_in': True, 'user_role': 'observer', 'user_name': res[0]})
                         st.rerun()
                     else: st.error("البريد غير مسجل")
+        else:
+            st.info("الرجاء النقر على نوع الحساب أعلاه للمتابعة")
     st.stop()
 
-# زر تسجيل الخروج
 if st.sidebar.button("تسجيل الخروج"):
     st.session_state.clear()
     st.rerun()
 
-# --- صلاحيات الإدارة ---
+# --- لوحة الإدارة ---
 if st.session_state['user_role'] == 'admin':
     menu = ["الإحصائيات", "إضافة حملة جديدة", "سجل الحملات", "دليل المراقبين"]
     choice = st.sidebar.selectbox("القائمة:", menu)
 
     if choice == "الإحصائيات":
-        st.header("📊 لوحة المؤشرات")
+        st.header("📊 لوحة المؤشرات العامة")
         df = جلب_الحملات()
         if not df.empty:
+            col_sites = "عدد المنشآت بناءً على المسح الميدا"
+            col_inspectors = "مأموري الضبط من وزارة التجارة"
+            col_region = "المنطقة"
             c1, c2, c3 = st.columns(3)
-            c1.metric("إجمالي الحملات", len(df))
-            st.bar_chart(df["المنطقة"].value_counts())
+            with c1: st.metric("إجمالي الحملات", len(df))
+            with c2:
+                if col_sites in df.columns:
+                    total_sites = pd.to_numeric(df[col_sites], errors='coerce').sum()
+                    st.metric("إجمالي المنشآت", int(total_sites) if not pd.isna(total_sites) else 0)
+            with c3: st.metric("المناطق النشطة", df[col_region].nunique() if col_region in df.columns else 0)
+            st.divider()
+            col_chart1, col_chart2 = st.columns(2)
+            with col_chart1:
+                st.subheader("توزيع الحملات")
+                st.bar_chart(df[col_region].value_counts())
+            with col_chart2:
+                if col_inspectors in df.columns:
+                    st.subheader("مشاركة الجهات")
+                    list_insp = df[col_inspectors].dropna().astype(str).str.split(', ').explode()
+                    st.bar_chart(list_insp.value_counts())
         else:
-            st.info("لا توجد بيانات.")
+            st.info("لا توجد بيانات حالياً.")
 
     elif choice == "إضافة حملة جديدة":
         st.header("تسجيل حملة ميدانية")
-        region = st.selectbox("المنطقة:", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم", "الباحة", "الجوف", "الحدود الشمالية"])
-        inspectors_choice = st.multiselect("الجهات المشاركة:", ["وزارة التجارة", "وزارة الموارد البشرية", "وزارة البيئة", "هيئة الزكاة"])
+        region = st.selectbox("المنطقة:", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم", "الباحة", "الحدود الشمالية", "الجوف"])
+        inspectors_choice = st.multiselect("الجهات المشاركة:", ["وزارة التجارة", "وزارة البلديات والإسكان", "وزارة الموارد البشرية والتنمية الاجتماعية", "وزارة البيئة والمياه والزراعة", "هيئة الزكاة والضريبة والجمارك"])
         filtered_obs = جلب_مراقبين_بالجهة(region, inspectors_choice)
 
-        with st.form("camp_form"):
+        with st.form("camp_form_final"):
             col1, col2 = st.columns(2)
             with col1:
                 date_val = st.date_input("تاريخ الحملة")
                 city = st.text_input("المدينة")
                 group_name = st.text_input("اسم التجمع")
             with col2:
-                leader = st.selectbox("قائد الفريق:", options=filtered_obs if filtered_obs else ["لا يوجد مراقبين"])
-                count = st.number_input("المنشآت", min_value=0)
+                leader = st.selectbox("قائد الفريق:", options=filtered_obs if filtered_obs else ["يرجى اختيار جهة أولاً"])
+                participants = st.multiselect("المراقبين المشاركين:", options=filtered_obs)
+                count = st.number_input("إجمالي المنشآت", min_value=0, step=1)
+            map_link = st.text_input("رابط الخرائط")
             
-            if st.form_submit_button("حفظ وإرسال تكليف"):
-                if group_name and leader != "لا يوجد مراقبين":
+            if st.form_submit_button("حفظ البيانات وإرسال تكليف"):
+                if group_name and leader != "يرجى اختيار جهة أولاً":
+                    days_map = {'Monday':'الاثنين','Tuesday':'الثلاثاء','Wednesday':'الأربعاء','Thursday':'الخميس','Friday':'الجمعة','Saturday':'السبت','Sunday':'الأحد'}
                     data = {
-                        "day": "يوم", "date": str(date_val), "region": region, "city": city,
-                        "group_name": group_name, "leader": leader, "participants": "", 
-                        "survey_count": int(count), "inspectors": ", ".join(inspectors_choice), "map_link": ""
+                        "day": days_map[date_val.strftime('%A')], "date": str(date_val), "region": region, "city": city,
+                        "group_name": group_name, "leader": leader, "participants": ", ".join(participants), 
+                        "survey_count": int(count), "inspectors": ", ".join(inspectors_choice), "map_link": map_link
                     }
                     اضافة_حملة(data)
-                    st.success(f"تم الحفظ بنجاح وتكليف {leader}")
+                    
+                    try:
+                        res = تحقق_دخول_المراقب(leader)
+                        if res:
+                            ارسل_بريد_تكليف(res[1], res[0], data)
+                            st.success(f"تم حفظ الحملة وإرسال بريد تكليف إلى {leader}")
+                            st.balloons()
+                        else:
+                            st.warning("تم حفظ الحملة ولكن لم يتم العثور على بريد القائد.")
+                    except Exception as e:
+                        st.error(f"حدث خطأ أثناء إرسال البريد: {e}")
                 else:
-                    st.error("أكمل البيانات")
+                    st.error("يرجى إكمال البيانات واختيار القائد")
+
+    elif choice == "سجل الحملات":
+        st.header("سجل الحملات الميدانية")
+        st.dataframe(جلب_الحملات(), use_container_width=True)
 
     elif choice == "دليل المراقبين":
-        t1, t2 = st.tabs(["القائمة", "إضافة مراقب"])
-        with t1: st.dataframe(جلب_المراقبين(), use_container_width=True)
+        t1, t2 = st.tabs(["قائمة المراقبين", "إضافة مراقب جديد"])
+        with t1: 
+            df_obs = جلب_المراقبين()
+            st.dataframe(df_obs, use_container_width=True)
         with t2:
-            with st.form("add_obs"):
-                n = st.text_input("الاسم")
-                e = st.text_input("الايميل")
-                p = st.text_input("الجوال (يبدأ بـ 966)", value="966")
-                r = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية"])
-                if st.form_submit_button("حفظ"):
-                    if len(p) == 12 and "@" in e:
-                        اضافة_مراقب({"name": n, "email": e, "status": "نشط", "phone": p, "work": "جهة", "region": r, "city": ""})
-                        st.success("تمت الإضافة")
-                    else: st.error("تأكد من البيانات")
+            st.subheader("إدخال بيانات مراقب جديد")
+            with st.form("add_obs_v2", clear_on_submit=True):
+                n = st.text_input("الاسم الكامل")
+                e = st.text_input("البريد الإلكتروني", placeholder="example@domain.com")
+                p = st.text_input("رقم الجوال", value="966", help="يجب أن يبدأ بـ 966 ويتكون من 12 رقماً")
+                w = st.selectbox("الجهة", ["وزارة التجارة", "وزارة البلديات والإسكان", "وزارة الموارد البشرية والتنمية الاجتماعية", "وزارة البيئة والمياه والزراعة", "هيئة الزكاة والضريبة والجمارك"])
+                r = st.selectbox("المنطقة", ["الرياض", "مكة المكرمة", "المدينة المنورة", "الشرقية", "عسير", "تبوك", "القصيم", "الباحة", "الحدود الشمالية", "الجوف"])
+                
+                if st.form_submit_button("حفظ بيانات المراقب 💾"):
+                    if n.lower() == "test" or len(n) < 3:
+                        st.error("❌ يرجى إدخال اسم حقيقي.")
+                    elif "@" not in e or "." not in e:
+                        st.error("❌ صيغة البريد الإلكتروني غير صحيحة.")
+                    elif not p.startswith("966") or len(p) != 12:
+                        st.error("❌ يجب أن يبدأ الجوال بـ 966 ويتكون من 12 رقماً إجمالاً.")
+                    else:
+                        اضافة_مراقب({"name": n, "email": e, "status": "نشط", "phone": p, "work": w, "region": r, "city": ""})
+                        st.success(f"✅ تمت إضافة {n} بنجاح")
+                        st.balloons()
 
-# --- صلاحيات المراقب ---
 elif st.session_state['user_role'] == 'observer':
-    st.header(f"👋 أهلاً، {st.session_state['user_name']}")
+    st.header(f"👋 أهلاً بك، {st.session_state['user_name']}")
+    st.subheader("📋 المهام الموكلة إليك")
     tasks = جلب_حملات_المراقب(st.session_state['user_name'])
-    st.dataframe(tasks, use_container_width=True)
+    if not tasks.empty:
+        st.dataframe(tasks, use_container_width=True)
+    else:
+        st.info("لا توجد مهام مسجلة باسمك حالياً.")
