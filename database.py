@@ -78,8 +78,9 @@ def init_db():
 
 def اضافة_حملة(بيانات):
     engine = get_engine()
+    if engine is None: return
     with engine.connect() as conn:
-        # قمت بتنظيف الاستعلام للتأكد من مطابقة الـ Parameters مع قاموس data
+        # تأكدي من كتابة أسماء الأعمدة تماماً كما هي في الجدول
         استعلام = text('''
             INSERT INTO campaigns 
             ("اليوم", "التاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
@@ -87,9 +88,11 @@ def اضافة_حملة(بيانات):
             VALUES 
             (:day, :date, :region, :city, :group_name, :leader, :participants, :survey_count, :inspectors, :map_link)
         ''')
-        # التأكد من تنفيذ الاستعلام بالبيانات المرسلة
-        conn.execute(استعلام, بيانات)
-        conn.commit()
+        try:
+            conn.execute(استعلام, بيانات)
+            conn.commit()
+        except Exception as e:
+            st.error(f"خطأ في تنفيذ الاستعلام: {e}")
         
 def جلب_الحملات():
     engine = get_engine()
