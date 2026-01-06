@@ -81,32 +81,40 @@ if st.session_state['user_role'] == 'admin':
     menu = ["الإحصائيات", "إضافة حملة جديدة", "سجل الحملات", "دليل المراقبين"]
     choice = st.sidebar.selectbox("القائمة:", menu)
 
-    if choice == "الإحصائيات":
+   if choice == "الإحصائيات":
         st.header("📊 لوحة المؤشرات العامة")
-        df = جلب_الحملات()
-        if not df.empty:
-            col_sites = "عدد المنشآت بناءً على المسح الميدا"
-            col_inspectors = "مأموري الضبط من وزارة التجارة"
+        df_campaigns = جلب_الحملات()
+        df_observers = جلب_المراقبين()
+        
+        # إنشاء الأعمدة للمؤشرات الجديدة
+        c1, c2 = st.columns(2)
+        
+        with c1:
+            st.metric("إجمالي الحملات", len(df_campaigns) if not df_campaigns.empty else 0)
+        
+        with c2:
+            st.metric("عدد المراقبين المسجلين", len(df_observers) if not df_observers.empty else 0)
+            
+        st.divider()
+        
+        if not df_campaigns.empty:
             col_region = "المنطقة"
-            c1, c2, c3 = st.columns(3)
-            with c1: st.metric("إجمالي الحملات", len(df))
-            with c2:
-                if col_sites in df.columns:
-                    total_sites = pd.to_numeric(df[col_sites], errors='coerce').sum()
-                    st.metric("إجمالي المنشآت", int(total_sites) if not pd.isna(total_sites) else 0)
-            with c3: st.metric("المناطق النشطة", df[col_region].nunique() if col_region in df.columns else 0)
-            st.divider()
+            col_inspectors = "مأموري الضبط من وزارة التجارة"
+            
             col_chart1, col_chart2 = st.columns(2)
+            
             with col_chart1:
-                st.subheader("توزيع الحملات")
-                st.bar_chart(df[col_region].value_counts())
+                st.subheader("توزيع الحملات حسب المناطق")
+                if col_region in df_campaigns.columns:
+                    st.bar_chart(df_campaigns[col_region].value_counts())
+            
             with col_chart2:
-                if col_inspectors in df.columns:
+                if col_inspectors in df_campaigns.columns:
                     st.subheader("مشاركة الجهات")
-                    list_insp = df[col_inspectors].dropna().astype(str).str.split(', ').explode()
+                    list_insp = df_campaigns[col_inspectors].dropna().astype(str).str.split(', ').explode()
                     st.bar_chart(list_insp.value_counts())
         else:
-            st.info("لا توجد بيانات حالياً.")
+            st.info("لا توجد بيانات حملات لعرض الرسوم البيانية.")
 
     elif choice == "إضافة حملة جديدة":
         st.header("تسجيل حملة ميدانية")
