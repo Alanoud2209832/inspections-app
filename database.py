@@ -52,6 +52,32 @@ def اضافة_حملة(بيانات):
         conn.execute(استعلام, بيانات)
         conn.commit()
 
+def جلب_الحملات():
+    engine = get_engine()
+    try:
+        with engine.connect() as conn:
+            return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
+    except:
+        return pd.DataFrame()
+
+def جلب_المراقبين():
+    engine = get_engine()
+    try:
+        with engine.connect() as conn:
+            return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
+    except:
+        return pd.DataFrame()
+
+def اضافة_مراقب(بيانات):
+    engine = get_engine()
+    with engine.connect() as conn:
+        استعلام = text('''
+            INSERT INTO observers ("الاسم", "الايميل", "حالة المراقب", "الجوال", "جهة العمل", "المنطقة", "المدينة")
+            VALUES (:name, :email, :status, :phone, :work, :region, :city)
+        ''')
+        conn.execute(استعلام, بيانات)
+        conn.commit()
+
 def جلب_مراقبين_بالجهة(المنطقة, الجهات):
     if not الجهات: return []
     engine = get_engine()
@@ -66,41 +92,29 @@ def جلب_مراقبين_بالجهة(المنطقة, الجهات):
     except:
         return []
 
-def جلب_الحملات():
+def تحقق_دخول_المراقب(ايميل):
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            return pd.read_sql('SELECT * FROM campaigns ORDER BY "م" DESC', conn)
-    except:
-        return pd.DataFrame()
-
-def اضافة_مراقب(بيانات):
-    engine = get_engine()
-    with engine.connect() as conn:
-        استعلام = text('''
-            INSERT INTO observers ("الاسم", "الايميل", "حالة المراقب", "الجوال", "جهة العمل", "المنطقة", "المدينة")
-            VALUES (:name, :email, :status, :phone, :work, :region, :city)
-        ''')
-        conn.execute(استعلام, بيانات)
-        conn.commit()
-
-def جلب_المراقبين():
-    engine = get_engine()
-    try:
-        with engine.connect() as conn:
-            return pd.read_sql('SELECT * FROM observers ORDER BY "#" ASC', conn)
-    except:
-        return pd.DataFrame()
-
-def تحقق_دخول_المراقب(اسم_المراقب):
-    engine = get_engine()
-    try:
-        with engine.connect() as conn:
-            استعلام = text('SELECT "الاسم", "الايميل" FROM observers WHERE "الاسم" = :name LIMIT 1')
-            res = conn.execute(استعلام, {"name": اسم_المراقب}).fetchone()
+            استعلام = text('SELECT "الاسم", "الايميل" FROM observers WHERE LOWER("الايميل") = LOWER(:email) LIMIT 1')
+            res = conn.execute(استعلام, {"email": ايميل.strip()}).fetchone()
             return res if res else None
     except:
         return None
+
+# الدالة التي كانت مفقودة وتسببت في الخطأ
+def جلب_حملات_المراقب(اسم_المراقب):
+    engine = get_engine()
+    try:
+        with engine.connect() as conn:
+            استعلام = text('''
+                SELECT * FROM campaigns 
+                WHERE "قائد الفريق" = :name OR "المراقبين المشاركين" LIKE :name_like
+                ORDER BY "م" DESC
+            ''')
+            return pd.read_sql(استعلام, conn, params={"name": اسم_المراقب, "name_like": f'%{اسم_المراقب}%'})
+    except:
+        return pd.DataFrame()
 
 def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراقب, تفاصيل_الحملة):
     try:
@@ -108,25 +122,13 @@ def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراق�
         smtp_password = st.secrets["email"]["smtp_password"]
         
         subject = f"تكليف بمهمة ميدانية: {تفاصيل_الحملة['group_name']}"
-        body = f"""
-        <div dir='rtl' style='text-align: right; font-family: Arial;'>
-            <h2 style='color: #2c3e50;'>أهلاً بك يا {اسم_المراقب}</h2>
-            <p>تم تكليفك رسمياً بمهمة رقابية جديدة، إليك التفاصيل:</p>
-            <table border='1' style='border-collapse: collapse; width: 100%; text-align: right;'>
-                <tr style='background-color: #f2f2f2;'><th>المجال</th><th>التفاصيل</th></tr>
-                <tr><td>اسم التجمع</td><td>{تفاصيل_الحملة['group_name']}</td></tr>
-                <tr><td>المدينة</td><td>{تفاصيل_الحملة['city']}</td></tr>
-                <tr><td>التاريخ</td><td>{تفاصيل_الحملة['date']}</td></tr>
-            </table>
-            <p>يمكنك الوصول للموقع عبر الرابط: <a href='{تفاصيل_الحملة['map_link']}'>خرائط جوجل</a></p>
-        </div>
-        """
+        body = f"أهلاً {اسم_المراقب}، تم تكليفك بحملة في {تفاصيل_الحملة['city']} بتاريخ {تفاصيل_الحملة['date']}."
         
         msg = MIMEMultipart()
         msg['From'] = smtp_user
         msg['To'] = ايميل_المراقب
         msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'html'))
+        msg.attach(MIMEText(body, 'plain'))
         
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
@@ -134,6 +136,5 @@ def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراق�
         server.sendmail(smtp_user, ايميل_المراقب, msg.as_string())
         server.quit()
         return True
-    except Exception as e:
-        st.error(f"خطأ في إرسال البريد: {e}")
+    except:
         return False
