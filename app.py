@@ -1,7 +1,7 @@
 import streamlit as st
 from database import (init_db, اضافة_حملة, جلب_الحملات, جلب_المراقبين, 
-                      اضافة_مراقب, جلب_مراقبين_بالجهة, تحقق_دخول_المراقب, جلب_حملات_المراقب, 
-                      get_engine, ارسل_بريد_تكليف)
+                     اضافة_مراقب, جلب_مراقبين_بالجهة, تحقق_دخول_المراقب, 
+                     جلب_حملات_المراقب, get_engine, ارسل_بريد_تكليف)
 import pandas as pd
 from datetime import datetime
 from sqlalchemy import text
