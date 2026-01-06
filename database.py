@@ -14,6 +14,7 @@ def get_engine():
 def init_db():
     engine = get_engine()
     with engine.connect() as conn:
+        # إنشاء جدول الحملات
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS campaigns (
                 "م" SERIAL PRIMARY KEY,
@@ -30,13 +31,28 @@ def init_db():
                 "تاريخ الإضافة" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         '''))
+        
+        # إنشاء جدول المراقبين
         conn.execute(text('''
             CREATE TABLE IF NOT EXISTS observers (
                 "#" SERIAL PRIMARY KEY,
-                "الاسم" TEXT, "الايميل" TEXT, "حالة المراقب" TEXT,
-                "الجوال" TEXT, "جهة العمل" TEXT, "المنطقة" TEXT, "المدينة" TEXT
+                "الاسم" TEXT,
+                "الايميل" TEXT,
+                "حالة المراقب" TEXT,
+                "الجوال" TEXT,
+                "جهة العمل" TEXT,
+                "المنطقة" TEXT,
+                "المدينة" TEXT
             );
         '''))
+
+        # كود ذكي لإضافة الأعمدة الناقصة لجدول المراقبين دون مسح البيانات
+        try:
+            conn.execute(text('ALTER TABLE observers ADD COLUMN IF NOT EXISTS "الجوال" TEXT;'))
+            conn.execute(text('ALTER TABLE observers ADD COLUMN IF NOT EXISTS "المدينة" TEXT;'))
+        except:
+            pass
+            
         conn.commit()
 
 def اضافة_حملة(بيانات):
