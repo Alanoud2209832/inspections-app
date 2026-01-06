@@ -96,63 +96,43 @@ def تحقق_دخول_المراقب(ايميل):
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            استعلام = text('SELECT "الاسم" FROM observers WHERE LOWER("الايميل") = LOWER(:email) LIMIT 1')
+            استعلام = text('SELECT "الاسم", "الايميل" FROM observers WHERE LOWER("الايميل") = LOWER(:email) LIMIT 1')
             res = conn.execute(استعلام, {"email": ايميل.strip()}).fetchone()
-            return res[0] if res else None
+            return res if res else None
     except:
         return None
 
-def جلب_حملات_المراقب(اسم_المراقب):
-    engine = get_engine()
-    try:
-        with engine.connect() as conn:
-            استعلام = text('''
-                SELECT * FROM campaigns 
-                WHERE "قائد الفريق" = :name OR "المراقبين المشاركين" LIKE :name_like
-                ORDER BY "م" DESC
-            ''')
-            return pd.read_sql(استعلام, conn, params={"name": اسم_المراقب, "name_like": f'%{اسم_المراقب}%'})
-    except:
-        return pd.DataFrame()
-        def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراقب, تفاصيل_الحملة):
+def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراقب, تفاصيل_الحملة):
     # جلب البيانات من Secrets
-    smtp_user = st.secrets["email"]["smtp_user"]
-    smtp_password = st.secrets["email"]["smtp_password"]
-    
-    # إعداد نص الرسالة
-    subject = f"تكليف بمهمة ميدانية: {تفاصيل_الحملة['group_name']}"
-    body = f"""
-    <html>
-    <body dir='rtl' style='text-align: right; font-family: sans-serif;'>
-        <h2 style='color: #1E3A8A;'>أهلاً بك يا {اسم_المراقب}</h2>
-        <p>تم تكليفك بقيادة حملة رقابية جديدة، إليك التفاصيل:</p>
-        <ul>
-            <li><b>اسم التجمع:</b> {تفاصيل_الحملة['group_name']}</li>
-            <li><b>التاريخ:</b> {تفاصيل_الحملة['date']}</li>
-            <li><b>المدينة:</b> {تفاصيل_الحملة['city']}</li>
-            <li><b>رابط الموقع:</b> <a href='{تفاصيل_الحملة['map_link']}'>اضغط هنا لفتح الخرائط</a></li>
-        </ul>
-        <p>بالتوفيق في مهمتك.</p>
-        <hr>
-        <small>هذا إيميل تلقائي من نظام الإدارة الرقابية</small>
-    </body>
-    </html>
-    """
-    
-    msg = MIMEMultipart()
-    msg['From'] = smtp_user
-    msg['To'] = ايميل_المراقب
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'html'))
-    
     try:
-        # الاتصال بخادم جوجل
+        smtp_user = st.secrets["email"]["smtp_user"]
+        smtp_password = st.secrets["email"]["smtp_password"]
+        
+        subject = f"تكليف بمهمة ميدانية: {تفاصيل_الحملة['group_name']}"
+        body = f"""
+        <div dir='rtl' style='text-align: right;'>
+            <h2>أهلاً بك يا {اسم_المراقب}</h2>
+            <p>تم تكليفك بمهمة رقابية جديدة:</p>
+            <ul>
+                <li><b>المكان:</b> {تفاصيل_الحملة['group_name']} - {تفاصيل_الحملة['city']}</li>
+                <li><b>التاريخ:</b> {تفاصيل_الحملة['date']}</li>
+            </ul>
+            <p>للموقع: <a href='{تفاصيل_الحملة['map_link']}'>اضغط هنا</a></p>
+        </div>
+        """
+        
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = ايميل_المراقب
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'html'))
+        
         server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls() # تشفير الاتصال
+        server.starttls()
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_user, ايميل_المراقب, msg.as_string())
         server.quit()
         return True
     except Exception as e:
-        print(f"Error: {e}")
+        st.error(f"خطأ في إرسال البريد: {e}")
         return False
