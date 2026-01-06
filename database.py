@@ -173,20 +173,41 @@ def جلب_حملات_المراقب(اسم_المراقب):
     except:
         return pd.DataFrame()
 
-def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراقب, تفاصيل_الحملة):
-    """إرسال إيميل التكليف عبر SMTP"""
+def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراقب, تفاصيل_الحملة, هل_هو_قائد=False):
+    """إرسال إيميل تكليف مخصص (للقائد أو للمراقب)"""
     try:
         smtp_user = st.secrets["email"]["smtp_user"]
         smtp_password = st.secrets["email"]["smtp_password"]
         
-        subject = f"تكليف بمهمة ميدانية: {تفاصيل_الحملة['group_name']}"
-        body = f"أهلاً {اسم_المراقب}، تم تكليفك بحملة في {تفاصيل_الحملة['city']} بتاريخ {تفاصيل_الحملة['date']}."
+        # تخصيص المسمى الوظيفي في الرسالة
+        المسمى = "(قائد الفريق)" if هل_هو_قائد else "(مراقب مشارك)"
+        
+        subject = f"🔔 تكليف بمهمة رقابية: {تفاصيل_الحملة['group_name']}"
+        
+        body = f"""
+        السلام عليكم ورحمة الله وبركاته،
+        
+        أهلاً {اسم_المراقب}،
+        
+        نود إحاطتك بأنه تم تكليفك بمهام {المسمى} للحملة الرقابية التالية:
+        
+        📍 المدينة: {تفاصيل_الحملة['city']}
+        🏢 اسم التجمع: {تفاصيل_الحملة['group_name']}
+        📅 التاريخ: {تفاصيل_الحملة['date']}
+        🗓️ اليوم: {تفاصيل_الحملة['day']}
+        🔗 رابط الموقع على الخرائط: {تفاصيل_الحملة['map_link']}
+        
+        يرجى الاطلاع والاستعداد للمهمة.
+        
+        مع تحيات،
+        إدارة النظام الرقابي
+        """
         
         msg = MIMEMultipart()
         msg['From'] = smtp_user
         msg['To'] = ايميل_المراقب
         msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
         
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
@@ -194,6 +215,5 @@ def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراق�
         server.sendmail(smtp_user, ايميل_المراقب, msg.as_string())
         server.quit()
         return True
-    except Exception as e:
-        print(f"Error sending email: {e}")
+    except:
         return False
