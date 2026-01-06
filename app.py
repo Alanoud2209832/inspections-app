@@ -128,12 +128,19 @@ if st.session_state['user_role'] == 'admin':
             if st.form_submit_button("حفظ البيانات وإرسال تكليف"):
                 if group_name and leader != "يرجى اختيار جهة أولاً":
                     days_map = {'Monday':'الاثنين','Tuesday':'الثلاثاء','Wednesday':'الأربعاء','Thursday':'الخميس','Friday':'الجمعة','Saturday':'السبت','Sunday':'الأحد'}
-                    data = {
-                        "day": days_map[date_val.strftime('%A')], "date": str(date_val), "region": region, "city": city,
-                        "group_name": group_name, "leader": leader, "participants": ", ".join(participants), 
-                        "survey_count": int(count), "inspectors": ", ".join(inspectors_choice), "map_link": map_link
-                    }
-                    اضافة_حملة(data)
+                   data = {
+                  "day": days_map[date_val.strftime('%A')], 
+                  "date": str(date_val), 
+                  "region": region, 
+                  "city": city,
+                  "group_name": group_name, 
+                  "leader": leader, 
+                  "participants": ", ".join(participants), 
+                  "survey_count": int(count), 
+                  "inspectors": ", ".join(inspectors_choice), 
+                  "map_link": map_link  # هذا السطر يجب أن يطابق تماماً كلمة :map_link في الاستعلام
+              }
+              اضافة_حملة(data)
                     
                     try:
                         res = تحقق_دخول_المراقب(leader)
