@@ -144,18 +144,23 @@ if st.session_state['user_role'] == 'admin':
                         "inspectors": ", ".join(inspectors_choice),
                         "map_link": map_link
                     }
+                    
+                    # 1. حفظ الحملة
                     اضافة_حملة(data)
                     
-                    try:
-                        res = جلب_بريد_المراقب_بالاسم(leader)
-                        if res:
-                            ارسل_بريد_تكليف(res[1], res[0], data)
-                            st.success(f"✅ تم حفظ الحملة وإرسال بريد تكليف إلى {leader}")
-                            st.balloons()
-                        else:
-                            st.warning("⚠️ تم حفظ الحملة، ولكن لم يتم العثور على بريد القائد في 'دليل المراقبين'.")
-                    except Exception as e:
-                        st.error(f"❌ حدث خطأ أثناء إرسال البريد: {e}")
+                    # 2. إرسال إيميل للقائد
+                    lead_res = جلب_بريد_المراقب_بالاسم(leader)
+                    if lead_res:
+                        ارسل_بريد_تكليف(lead_res[1], lead_res[0], data, هل_هو_قائد=True)
+                    
+                    # 3. إرسال إيميلات للمراقبين المشاركين
+                    for p_name in participants:
+                        p_res = جلب_بريد_المراقب_بالاسم(p_name)
+                        if p_res:
+                            ارسل_بريد_تكليف(p_res[1], p_res[0], data, هل_هو_قائد=False)
+                    
+                    st.success(f"✅ تم حفظ الحملة وإرسال التكليفات للجميع")
+                    st.balloons()
                 else:
                     st.error("يرجى إكمال البيانات واختيار القائد")
 
