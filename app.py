@@ -149,16 +149,17 @@ if st.session_state['user_role'] == 'admin':
                     اضافة_حملة(data)
                     
                     # 2. إرسال إيميل للقائد
+                 # إرسال إيميل للقائد
                     lead_res = جلب_بريد_المراقب_بالاسم(leader)
                     if lead_res:
                         ارسل_بريد_تكليف(lead_res[1], lead_res[0], data, هل_هو_قائد=True)
                     
-                    # 3. إرسال إيميلات للمراقبين المشاركين
+                    # إرسال إيميلات للمراقبين المشاركين
                     for p_name in participants:
                         p_res = جلب_بريد_المراقب_بالاسم(p_name)
                         if p_res:
                             ارسل_بريد_تكليف(p_res[1], p_res[0], data, هل_هو_قائد=False)
-                    
+                          
                     st.success(f"✅ تم حفظ الحملة وإرسال التكليفات للجميع")
                     st.balloons()
                 else:
