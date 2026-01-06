@@ -92,32 +92,33 @@ def جلب_المراقبين():
     except:
         return pd.DataFrame()
 
-def تحقق_دخول_المراقب(ايميل):
+def تحقق_دخول_المراقب(اسم_المراقب):
     engine = get_engine()
     try:
         with engine.connect() as conn:
-            استعلام = text('SELECT "الاسم", "الايميل" FROM observers WHERE LOWER("الايميل") = LOWER(:email) LIMIT 1')
-            res = conn.execute(استعلام, {"email": ايميل.strip()}).fetchone()
+            استعلام = text('SELECT "الاسم", "الايميل" FROM observers WHERE "الاسم" = :name LIMIT 1')
+            res = conn.execute(استعلام, {"name": اسم_المراقب}).fetchone()
             return res if res else None
     except:
         return None
 
 def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراقب, تفاصيل_الحملة):
-    # جلب البيانات من Secrets
     try:
         smtp_user = st.secrets["email"]["smtp_user"]
         smtp_password = st.secrets["email"]["smtp_password"]
         
         subject = f"تكليف بمهمة ميدانية: {تفاصيل_الحملة['group_name']}"
         body = f"""
-        <div dir='rtl' style='text-align: right;'>
-            <h2>أهلاً بك يا {اسم_المراقب}</h2>
-            <p>تم تكليفك بمهمة رقابية جديدة:</p>
-            <ul>
-                <li><b>المكان:</b> {تفاصيل_الحملة['group_name']} - {تفاصيل_الحملة['city']}</li>
-                <li><b>التاريخ:</b> {تفاصيل_الحملة['date']}</li>
-            </ul>
-            <p>للموقع: <a href='{تفاصيل_الحملة['map_link']}'>اضغط هنا</a></p>
+        <div dir='rtl' style='text-align: right; font-family: Arial;'>
+            <h2 style='color: #2c3e50;'>أهلاً بك يا {اسم_المراقب}</h2>
+            <p>تم تكليفك رسمياً بمهمة رقابية جديدة، إليك التفاصيل:</p>
+            <table border='1' style='border-collapse: collapse; width: 100%; text-align: right;'>
+                <tr style='background-color: #f2f2f2;'><th>المجال</th><th>التفاصيل</th></tr>
+                <tr><td>اسم التجمع</td><td>{تفاصيل_الحملة['group_name']}</td></tr>
+                <tr><td>المدينة</td><td>{تفاصيل_الحملة['city']}</td></tr>
+                <tr><td>التاريخ</td><td>{تفاصيل_الحملة['date']}</td></tr>
+            </table>
+            <p>يمكنك الوصول للموقع عبر الرابط: <a href='{تفاصيل_الحملة['map_link']}'>خرائط جوجل</a></p>
         </div>
         """
         
