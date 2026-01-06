@@ -6,15 +6,11 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 def get_engine():
-    # جلب الرابط من الإعدادات السرية (Secrets)
+    """إنشاء محرك الاتصال بقاعدة البيانات"""
     try:
         db_url = st.secrets["connections"]["postgresql"]["url"]
-        
-        # تصحيح البروتوكول إذا كان يبدأ بـ postgres:// ليصبح postgresql://
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql://", 1)
-            
-        # إنشاء المحرك (Engine) للاتصال
         engine = create_engine(db_url, pool_pre_ping=True)
         return engine
     except Exception as e:
@@ -22,6 +18,7 @@ def get_engine():
         return None
 
 def test_connection():
+    """اختبار الاتصال بالقاعدة"""
     engine = get_engine()
     if engine:
         try:
@@ -32,6 +29,7 @@ def test_connection():
             return f"❌ فشل الاتصال: {e}"
 
 def init_db():
+    """تهيئة الجداول عند تشغيل التطبيق لأول مرة"""
     engine = get_engine()
     if engine is None: return
     with engine.connect() as conn:
@@ -67,7 +65,7 @@ def init_db():
             );
         '''))
 
-        # كود ذكي لإضافة الأعمدة الناقصة لجدول المراقبين دون مسح البيانات
+        # تحديث الأعمدة إذا كانت ناقصة
         try:
             conn.execute(text('ALTER TABLE observers ADD COLUMN IF NOT EXISTS "الجوال" TEXT;'))
             conn.execute(text('ALTER TABLE observers ADD COLUMN IF NOT EXISTS "المدينة" TEXT;'))
@@ -77,11 +75,11 @@ def init_db():
         conn.commit()
 
 def اضافة_حملة(بيانات):
+    """إضافة حملة جديدة إلى القاعدة"""
     engine = get_engine()
     if engine is None: return
     try:
         with engine.connect() as conn:
-            # ملاحظة: تم التأكد من مطابقة الأسماء للجدول الجديد
             استعلام = text('''
                 INSERT INTO campaigns 
                 ("اليوم", "التاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
@@ -95,6 +93,7 @@ def اضافة_حملة(بيانات):
         st.error(f"خطأ في تنفيذ الاستعلام: {e}")
 
 def جلب_الحملات():
+    """جلب كافة الحملات المسجلة"""
     engine = get_engine()
     try:
         with engine.connect() as conn:
@@ -103,6 +102,7 @@ def جلب_الحملات():
         return pd.DataFrame()
 
 def جلب_المراقبين():
+    """جلب قائمة المراقبين"""
     engine = get_engine()
     try:
         with engine.connect() as conn:
@@ -111,6 +111,7 @@ def جلب_المراقبين():
         return pd.DataFrame()
 
 def اضافة_مراقب(بيانات):
+    """إضافة مراقب جديد"""
     engine = get_engine()
     if engine is None: return
     with engine.connect() as conn:
@@ -122,6 +123,7 @@ def اضافة_مراقب(بيانات):
         conn.commit()
 
 def جلب_مراقبين_بالجهة(المنطقة, الجهات):
+    """تصفية المراقبين حسب المنطقة والجهة"""
     if not الجهات: return []
     engine = get_engine()
     try:
@@ -136,6 +138,7 @@ def جلب_مراقبين_بالجهة(المنطقة, الجهات):
         return []
 
 def تحقق_دخول_المراقب(ايميل):
+    """التحقق من وجود البريد الإلكتروني للمراقب عند تسجيل الدخول"""
     engine = get_engine()
     try:
         with engine.connect() as conn:
@@ -145,7 +148,19 @@ def تحقق_دخول_المراقب(ايميل):
     except:
         return None
 
+def جلب_بريد_المراقب_بالاسم(اسم):
+    """جلب إيميل المراقب باستخدام اسمه (لإرسال التكليفات)"""
+    engine = get_engine()
+    try:
+        with engine.connect() as conn:
+            استعلام = text('SELECT "الاسم", "الايميل" FROM observers WHERE "الاسم" = :name LIMIT 1')
+            res = conn.execute(استعلام, {"name": اسم}).fetchone()
+            return res
+    except:
+        return None
+
 def جلب_حملات_المراقب(اسم_المراقب):
+    """جلب الحملات الخاصة بمراقب معين"""
     engine = get_engine()
     try:
         with engine.connect() as conn:
@@ -159,6 +174,7 @@ def جلب_حملات_المراقب(اسم_المراقب):
         return pd.DataFrame()
 
 def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراقب, تفاصيل_الحملة):
+    """إرسال إيميل التكليف عبر SMTP"""
     try:
         smtp_user = st.secrets["email"]["smtp_user"]
         smtp_password = st.secrets["email"]["smtp_password"]
@@ -178,5 +194,6 @@ def ارسل_بريد_تكليف(ايميل_المراقب, اسم_المراق�
         server.sendmail(smtp_user, ايميل_المراقب, msg.as_string())
         server.quit()
         return True
-    except:
+    except Exception as e:
+        print(f"Error sending email: {e}")
         return False
