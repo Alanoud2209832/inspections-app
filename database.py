@@ -5,7 +5,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-ef get_engine():
+def get_engine():
     # جلب الرابط من الإعدادات السرية (Secrets)
     try:
         db_url = st.secrets["connections"]["postgresql"]["url"]
@@ -33,6 +33,7 @@ def test_connection():
 
 def init_db():
     engine = get_engine()
+    if engine is None: return
     with engine.connect() as conn:
         # إنشاء جدول الحملات
         conn.execute(text('''
@@ -107,7 +108,6 @@ def جلب_المراقبين():
 def اضافة_مراقب(بيانات):
     engine = get_engine()
     with engine.connect() as conn:
-        # تأكدي أن الأسماء هنا (الاسم، الايميل، إلخ) تطابق جدولك في Neon
         استعلام = text('''
             INSERT INTO observers ("الاسم", "الايميل", "حالة المراقب", "الجوال", "جهة العمل", "المنطقة", "المدينة")
             VALUES (:name, :email, :status, :phone, :work, :region, :city)
@@ -139,7 +139,6 @@ def تحقق_دخول_المراقب(ايميل):
     except:
         return None
 
-# الدالة التي كانت مفقودة وتسببت في الخطأ
 def جلب_حملات_المراقب(اسم_المراقب):
     engine = get_engine()
     try:
