@@ -71,6 +71,7 @@ def جلب_المراقبين():
 def اضافة_مراقب(بيانات):
     engine = get_engine()
     with engine.connect() as conn:
+        # تأكدي أن الأسماء هنا (الاسم، الايميل، إلخ) تطابق جدولك في Neon
         استعلام = text('''
             INSERT INTO observers ("الاسم", "الايميل", "حالة المراقب", "الجوال", "جهة العمل", "المنطقة", "المدينة")
             VALUES (:name, :email, :status, :phone, :work, :region, :city)
