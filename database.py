@@ -5,11 +5,31 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-def get_engine():
-    db_url = st.secrets["connections"]["postgresql"]["url"]
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
-    return create_engine(db_url, pool_pre_ping=True)
+ef get_engine():
+    # جلب الرابط من الإعدادات السرية (Secrets)
+    try:
+        db_url = st.secrets["connections"]["postgresql"]["url"]
+        
+        # تصحيح البروتوكول إذا كان يبدأ بـ postgres:// ليصبح postgresql://
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+            
+        # إنشاء المحرك (Engine) للاتصال
+        engine = create_engine(db_url, pool_pre_ping=True)
+        return engine
+    except Exception as e:
+        st.error(f"خطأ في الوصول إلى بيانات الاتصال: {e}")
+        return None
+
+def test_connection():
+    engine = get_engine()
+    if engine:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+                return "✅ تم الاتصال بنجاح!"
+        except Exception as e:
+            return f"❌ فشل الاتصال: {e}"
 
 def init_db():
     engine = get_engine()
