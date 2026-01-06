@@ -79,7 +79,7 @@ def init_db():
 def اضافة_حملة(بيانات):
     engine = get_engine()
     with engine.connect() as conn:
-        # تأكدي من تطابق عدد الحقول (10 حقول) مع عدد القيم المرسلة (10 قيم)
+        # قمت بتنظيف الاستعلام للتأكد من مطابقة الـ Parameters مع قاموس data
         استعلام = text('''
             INSERT INTO campaigns 
             ("اليوم", "التاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
@@ -87,6 +87,7 @@ def اضافة_حملة(بيانات):
             VALUES 
             (:day, :date, :region, :city, :group_name, :leader, :participants, :survey_count, :inspectors, :map_link)
         ''')
+        # التأكد من تنفيذ الاستعلام بالبيانات المرسلة
         conn.execute(استعلام, بيانات)
         conn.commit()
         
