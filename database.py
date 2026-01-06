@@ -79,20 +79,21 @@ def init_db():
 def اضافة_حملة(بيانات):
     engine = get_engine()
     if engine is None: return
-    with engine.connect() as conn:
-        # ملاحظة: تم التأكد من مطابقة الأسماء للجدول الجديد
-        استعلام = text('''
-            INSERT INTO campaigns 
-            ("اليوم", "التاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
-             "عدد المنشآت بناءً على المسح الميدا", "مأموري الضبط من وزارة التجارة", "موقع التجمع على الخرائط")
-            VALUES 
-            (:day, :date, :region, :city, :group_name, :leader, :participants, :survey_count, :inspectors, :map_link)
-        ''')
-        conn.execute(استعلام, بيانات)
-        conn.commit()
-        except Exception as e:
-            st.error(f"خطأ في تنفيذ الاستعلام: {e}")
-        
+    try:
+        with engine.connect() as conn:
+            # ملاحظة: تم التأكد من مطابقة الأسماء للجدول الجديد
+            استعلام = text('''
+                INSERT INTO campaigns 
+                ("اليوم", "التاريخ", "المنطقة", "المدينة", "اسم التجمع", "قائد الفريق", "المراقبين المشاركين",
+                 "عدد المنشآت بناءً على المسح الميدا", "مأموري الضبط من وزارة التجارة", "موقع التجمع على الخرائط")
+                VALUES 
+                (:day, :date, :region, :city, :group_name, :leader, :participants, :survey_count, :inspectors, :map_link)
+            ''')
+            conn.execute(استعلام, بيانات)
+            conn.commit()
+    except Exception as e:
+        st.error(f"خطأ في تنفيذ الاستعلام: {e}")
+
 def جلب_الحملات():
     engine = get_engine()
     try:
@@ -111,6 +112,7 @@ def جلب_المراقبين():
 
 def اضافة_مراقب(بيانات):
     engine = get_engine()
+    if engine is None: return
     with engine.connect() as conn:
         استعلام = text('''
             INSERT INTO observers ("الاسم", "الايميل", "حالة المراقب", "الجوال", "جهة العمل", "المنطقة", "المدينة")
