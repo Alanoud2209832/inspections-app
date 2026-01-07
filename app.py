@@ -25,7 +25,7 @@ if not st.session_state['logged_in']:
         <style>
         [data-testid="stSidebar"] { display: none; }
         .login-container { max-width: 450px; margin: auto; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
-        .main-title { color: #1E3A8A; font-size: 28px; font-weight: bold; margin-bottom: 5px; text-align: center; }
+        .main-title { color: #1E3A8A; font-size: 44px; font-weight: bold; margin-bottom: 5px; text-align: center; }
         .sub-title { color: #64748b; margin-bottom: 30px; font-size: 14px; text-align: center; }
         </style>
         """, unsafe_allow_html=True)
@@ -35,7 +35,7 @@ if not st.session_state['logged_in']:
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown('<div class="main-title">🛡️ نظام الإدارة الرقابية</div>', unsafe_allow_html=True)
+        st.markdown('<div class="main-title">نظام الإدارة الرقابية</div>', unsafe_allow_html=True)
         st.markdown('<div class="sub-title">اختر نوع الحساب للوصول إلى صلاحياتك</div>', unsafe_allow_html=True)
 
         btn_col1, btn_col2 = st.columns(2)
